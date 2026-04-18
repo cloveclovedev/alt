@@ -1,0 +1,21 @@
+# Personal data and configuration
+data/
+alt.toml
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+
+# Next.js webapp
+webapp/.env.local
+
+# Worktrees
+.worktrees/
+
+# Superpowers brainstorming
+.superpowers/
+.claude/skills/atlas
