@@ -81,3 +81,37 @@ def test_set_and_get_string_that_looks_like_json(config_db):
     result = config.get(client, "test.config.json_like_string")
     assert result == '{"not": "a dict"}'
     assert isinstance(result, str)
+
+
+def test_list_configs_returns_all(config_db):
+    client, keys = config_db
+    keys.extend(["test.list.a", "test.list.b"])
+    config.set(client, "test.list.a", 1)
+    config.set(client, "test.list.b", 2)
+    results = config.list_configs(client)
+    found = {r["key"]: r["value"] for r in results if r["key"].startswith("test.list.")}
+    assert found == {"test.list.a": 1, "test.list.b": 2}
+
+
+def test_list_configs_with_prefix(config_db):
+    client, keys = config_db
+    keys.extend(["test.prefix.x.one", "test.prefix.x.two", "test.prefix.y.one"])
+    config.set(client, "test.prefix.x.one", "x1")
+    config.set(client, "test.prefix.x.two", "x2")
+    config.set(client, "test.prefix.y.one", "y1")
+    results = config.list_configs(client, prefix="test.prefix.x.")
+    found_keys = {r["key"] for r in results}
+    assert "test.prefix.x.one" in found_keys
+    assert "test.prefix.x.two" in found_keys
+    assert "test.prefix.y.one" not in found_keys
+
+
+def test_list_configs_includes_timestamps(config_db):
+    client, keys = config_db
+    keys.append("test.list.with_ts")
+    config.set(client, "test.list.with_ts", "value")
+    results = config.list_configs(client, prefix="test.list.with_ts")
+    assert len(results) == 1
+    row = results[0]
+    assert "created_at" in row
+    assert "updated_at" in row
