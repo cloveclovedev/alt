@@ -11,7 +11,7 @@ from alt_db.entries import (
 
 
 def test_add_and_get_entry(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(client, type="memo", title="Test: Rust is interesting")
     entry_ids.append(entry_id)
     result = get_entry(client, entry_id)
@@ -22,7 +22,7 @@ def test_add_and_get_entry(db):
 
 
 def test_add_entry_with_all_fields(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(
         client,
         type="goal",
@@ -39,7 +39,7 @@ def test_add_entry_with_all_fields(db):
 
 
 def test_list_entries_by_type(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     id1 = add_entry(client, type="memo", title="Test: Memo 1")
     id2 = add_entry(client, type="goal", title="Test: Goal 1")
     id3 = add_entry(client, type="memo", title="Test: Memo 2")
@@ -53,7 +53,7 @@ def test_list_entries_by_type(db):
 
 
 def test_list_entries_by_status(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     id1 = add_entry(client, type="goal", title="Test: Active goal", status="active")
     id2 = add_entry(client, type="goal", title="Test: Done goal", status="achieved")
     entry_ids.extend([id1, id2])
@@ -64,7 +64,7 @@ def test_list_entries_by_status(db):
 
 
 def test_list_entries_since_days(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(client, type="memo", title="Test: Recent memo")
     entry_ids.append(entry_id)
     results = list_entries(client, since_days=7)
@@ -72,7 +72,7 @@ def test_list_entries_since_days(db):
 
 
 def test_search_entries(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     id1 = add_entry(
         client,
         type="knowledge",
@@ -87,7 +87,7 @@ def test_search_entries(db):
 
 
 def test_update_entry(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(client, type="goal", title="Test: Launch app", status="active")
     entry_ids.append(entry_id)
     update_entry(client, entry_id, status="achieved")
@@ -96,7 +96,7 @@ def test_update_entry(db):
 
 
 def test_update_entry_title_and_metadata(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(client, type="memo", title="Test: Old title")
     entry_ids.append(entry_id)
     update_entry(client, entry_id, title="Test: New title", metadata={"note": "updated"})
@@ -106,7 +106,7 @@ def test_update_entry_title_and_metadata(db):
 
 
 def test_delete_entry(db):
-    client, entry_ids, _, _ = db
+    client, entry_ids = db
     entry_id = add_entry(client, type="memo", title="Test: To be deleted")
     # No need to track — delete_entry handles removal
     delete_entry(client, entry_id)
@@ -115,13 +115,13 @@ def test_delete_entry(db):
 
 
 def test_get_entry_not_found(db):
-    client, _, _, _ = db
+    client, _ = db
     result = get_entry(client, "00000000-0000-0000-0000-000000000000")
     assert result is None
 
 
 def test_add_entry_with_parent(db):
-    client, created_ids, *_ = db
+    client, created_ids = db
     parent_id = add_entry(client, type="goal", title="Parent goal")
     created_ids.append(parent_id)
     child_id = add_entry(client, type="goal", title="Sub-goal", parent_id=parent_id)

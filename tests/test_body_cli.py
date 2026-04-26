@@ -24,15 +24,12 @@ CSV_ROW = (
 
 
 def test_run_import_parses_and_enriches(db):
-    client, _, _, body_timestamps = db
+    client, created_ids = db
     path = tempfile.NamedTemporaryFile(
         mode="w", suffix=".csv", delete=False, encoding="utf-8"
     )
     path.write(CSV_HEADER + "\n" + CSV_ROW + "\n")
     path.close()
-
-    # Track for cleanup
-    body_timestamps.append("2099-01-01T12:00:00+09:00")
 
     try:
         inserted, skipped, latest = _run_import(client, path.name, height_m=1.73)
@@ -44,3 +41,11 @@ def test_run_import_parses_and_enriches(db):
         assert latest["skeletal_muscle_ratio"] == 44.84
     finally:
         os.unlink(path.name)
+
+    # Track inserted entry for cleanup
+    result = client.execute(
+        "SELECT id FROM entries WHERE type = 'body_measurement' AND metadata->>'measured_at' = $1",
+        ["2099-01-01T12:00:00+09:00"],
+    )
+    for row in result.rows:
+        created_ids.append(row[0])

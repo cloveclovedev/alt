@@ -8,7 +8,7 @@ JST = timezone(timedelta(hours=9))
 
 
 def test_upsert_single_measurement(db):
-    client, created_ids, *_ = db
+    client, created_ids = db
     ts = datetime(2099, 1, 1, 12, 0, 0, tzinfo=JST)
     ts_iso = ts.isoformat()
 
@@ -56,7 +56,7 @@ def test_upsert_single_measurement(db):
 
 
 def test_upsert_skips_duplicates(db):
-    client, created_ids, *_ = db
+    client, created_ids = db
     ts = datetime(2099, 1, 2, 12, 0, 0, tzinfo=JST)
     ts_iso = ts.isoformat()
 
