@@ -8,9 +8,9 @@ JST = timezone(timedelta(hours=9))
 
 
 def test_upsert_single_measurement(db):
-    client, _, _, body_timestamps = db
+    client, created_ids, *_ = db
     ts = datetime(2099, 1, 1, 12, 0, 0, tzinfo=JST)
-    body_timestamps.append(ts.isoformat())
+    ts_iso = ts.isoformat()
 
     measurements = [
         {
@@ -33,20 +33,32 @@ def test_upsert_single_measurement(db):
     assert inserted == 1
     assert skipped == 0
 
-    # Verify data in DB
+    # Track inserted entry IDs for cleanup
     result = client.execute(
-        "SELECT weight_kg, ffmi FROM body_measurements WHERE measured_at = $1",
-        [ts.isoformat()],
+        "SELECT id FROM entries WHERE type = 'body_measurement' AND metadata->>'measured_at' = $1",
+        [ts_iso],
+    )
+    for row in result.rows:
+        created_ids.append(row[0])
+
+    # Verify data in DB via entries table
+    result = client.execute(
+        "SELECT metadata FROM entries WHERE type = 'body_measurement' AND metadata->>'measured_at' = $1",
+        [ts_iso],
     )
     assert len(result.rows) == 1
-    assert float(result.rows[0][0]) == 64.9
-    assert float(result.rows[0][1]) == 17.56
+    metadata = result.rows[0][0]
+    if isinstance(metadata, str):
+        import json
+        metadata = json.loads(metadata)
+    assert float(metadata["weight_kg"]) == 64.9
+    assert float(metadata["ffmi"]) == 17.56
 
 
 def test_upsert_skips_duplicates(db):
-    client, _, _, body_timestamps = db
+    client, created_ids, *_ = db
     ts = datetime(2099, 1, 2, 12, 0, 0, tzinfo=JST)
-    body_timestamps.append(ts.isoformat())
+    ts_iso = ts.isoformat()
 
     measurements = [
         {
@@ -65,8 +77,21 @@ def test_upsert_skips_duplicates(db):
             "skeletal_muscle_ratio": None,
         }
     ]
-    inserted1, _ = upsert_measurements(client, measurements)
+    inserted1, skipped1 = upsert_measurements(client, measurements)
     inserted2, skipped2 = upsert_measurements(client, measurements)
+
     assert inserted1 == 1
+    assert skipped1 == 0
     assert inserted2 == 0
     assert skipped2 == 1
+
+    # Track inserted entry IDs for cleanup
+    result = client.execute(
+        "SELECT id FROM entries WHERE type = 'body_measurement' AND metadata->>'measured_at' = $1",
+        [ts_iso],
+    )
+    for row in result.rows:
+        created_ids.append(row[0])
+
+    # Verify only one entry exists
+    assert len(result.rows) == 1
