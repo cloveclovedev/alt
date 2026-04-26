@@ -1,11 +1,6 @@
 import { sql } from "./db"
 import type { BodyMeasurement, BodyGoal, BodyGoalStatus } from "./types"
 
-function serializeDate(value: unknown): string {
-  if (value instanceof Date) return value.toISOString()
-  return String(value ?? "")
-}
-
 function serializeDateOnly(value: unknown): string {
   if (value instanceof Date) {
     const y = value.getFullYear()
@@ -16,13 +11,40 @@ function serializeDateOnly(value: unknown): string {
   return String(value ?? "")
 }
 
-function serializeGoal(row: Record<string, unknown>): BodyGoal {
+function entryToMeasurement(row: Record<string, unknown>): BodyMeasurement {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>
   return {
-    ...row,
-    start_date: serializeDateOnly(row.start_date),
-    target_date: serializeDateOnly(row.target_date),
-    created_at: serializeDate(row.created_at),
-  } as BodyGoal
+    id: row.id as string,
+    measured_at: String(meta.measured_at ?? ""),
+    weight_kg: Number(meta.weight_kg ?? 0),
+    skeletal_muscle_mass_kg: meta.skeletal_muscle_mass_kg != null ? Number(meta.skeletal_muscle_mass_kg) : null,
+    muscle_mass_kg: meta.muscle_mass_kg != null ? Number(meta.muscle_mass_kg) : null,
+    body_fat_mass_kg: meta.body_fat_mass_kg != null ? Number(meta.body_fat_mass_kg) : null,
+    body_fat_percent: meta.body_fat_percent != null ? Number(meta.body_fat_percent) : null,
+    bmi: meta.bmi != null ? Number(meta.bmi) : null,
+    basal_metabolic_rate: meta.basal_metabolic_rate != null ? Number(meta.basal_metabolic_rate) : null,
+    inbody_score: meta.inbody_score != null ? Number(meta.inbody_score) : null,
+    waist_hip_ratio: meta.waist_hip_ratio != null ? Number(meta.waist_hip_ratio) : null,
+    visceral_fat_level: meta.visceral_fat_level != null ? Number(meta.visceral_fat_level) : null,
+    ffmi: meta.ffmi != null ? Number(meta.ffmi) : null,
+    skeletal_muscle_ratio: meta.skeletal_muscle_ratio != null ? Number(meta.skeletal_muscle_ratio) : null,
+    source: String(meta.source ?? "inbody"),
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at ?? ""),
+  }
+}
+
+function entryToGoal(row: Record<string, unknown>): BodyGoal {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>
+  return {
+    id: row.id as string,
+    metric: String(meta.metric ?? row.title ?? ""),
+    target_value: Number(meta.target_value ?? 0),
+    start_value: meta.start_value != null ? Number(meta.start_value) : null,
+    start_date: serializeDateOnly(meta.start_date),
+    target_date: serializeDateOnly(meta.target_date),
+    status: (row.status ?? "active") as BodyGoalStatus,
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at ?? ""),
+  }
 }
 
 export async function getBodyMeasurements(
@@ -30,26 +52,30 @@ export async function getBodyMeasurements(
 ): Promise<BodyMeasurement[]> {
   if (startDate) {
     const rows = await sql`
-      SELECT * FROM body_measurements
-      WHERE measured_at >= ${startDate}::date
-      ORDER BY measured_at ASC
+      SELECT id, metadata, created_at FROM entries
+      WHERE type = 'body_measurement'
+        AND (metadata->>'measured_at')::timestamptz >= ${startDate}::date
+      ORDER BY (metadata->>'measured_at')::timestamptz ASC
     `
-    return rows as BodyMeasurement[]
+    return rows.map((r) => entryToMeasurement(r as Record<string, unknown>))
   }
   const rows = await sql`
-    SELECT * FROM body_measurements
-    ORDER BY measured_at ASC
+    SELECT id, metadata, created_at FROM entries
+    WHERE type = 'body_measurement'
+    ORDER BY (metadata->>'measured_at')::timestamptz ASC
   `
-  return rows as BodyMeasurement[]
+  return rows.map((r) => entryToMeasurement(r as Record<string, unknown>))
 }
 
 export async function getLatestMeasurement(): Promise<BodyMeasurement | null> {
   const rows = await sql`
-    SELECT * FROM body_measurements
-    ORDER BY measured_at DESC
+    SELECT id, metadata, created_at FROM entries
+    WHERE type = 'body_measurement'
+    ORDER BY (metadata->>'measured_at')::timestamptz DESC
     LIMIT 1
   `
-  return (rows[0] as BodyMeasurement) ?? null
+  if (!rows[0]) return null
+  return entryToMeasurement(rows[0] as Record<string, unknown>)
 }
 
 export async function getBodyGoals(
@@ -57,17 +83,19 @@ export async function getBodyGoals(
 ): Promise<BodyGoal[]> {
   if (status) {
     const rows = await sql`
-      SELECT * FROM body_measurement_goals
-      WHERE status = ${status}
+      SELECT id, title, status, metadata, created_at FROM entries
+      WHERE type = 'body_measurement_goal'
+        AND status = ${status}
       ORDER BY created_at DESC
     `
-    return rows.map((r) => serializeGoal(r as Record<string, unknown>))
+    return rows.map((r) => entryToGoal(r as Record<string, unknown>))
   }
   const rows = await sql`
-    SELECT * FROM body_measurement_goals
+    SELECT id, title, status, metadata, created_at FROM entries
+    WHERE type = 'body_measurement_goal'
     ORDER BY created_at DESC
   `
-  return rows.map((r) => serializeGoal(r as Record<string, unknown>))
+  return rows.map((r) => entryToGoal(r as Record<string, unknown>))
 }
 
 export async function createBodyGoal(input: {
@@ -81,37 +109,65 @@ export async function createBodyGoal(input: {
     : null
   const startDate = new Date().toISOString().slice(0, 10)
 
+  const metadata = {
+    metric: input.metric,
+    target_value: input.target_value,
+    start_value: startValue,
+    start_date: startDate,
+    target_date: input.target_date,
+  }
+
   const rows = await sql`
-    INSERT INTO body_measurement_goals (metric, target_value, start_value, start_date, target_date)
-    VALUES (${input.metric}, ${input.target_value}, ${startValue}, ${startDate}, ${input.target_date})
-    RETURNING *
+    INSERT INTO entries (type, title, status, metadata)
+    VALUES ('body_measurement_goal', ${input.metric}, 'active', ${JSON.stringify(metadata)}::jsonb)
+    RETURNING id, title, status, metadata, created_at
   `
-  return serializeGoal(rows[0] as Record<string, unknown>)
+  return entryToGoal(rows[0] as Record<string, unknown>)
 }
 
 export async function updateBodyGoal(
   id: string,
   input: { target_value?: number; target_date?: string; status?: BodyGoalStatus }
 ): Promise<BodyGoal> {
+  const updates: Record<string, unknown> = {}
+  if (input.target_value !== undefined) updates.target_value = input.target_value
+  if (input.target_date !== undefined) updates.target_date = input.target_date
+
+  if (input.status !== undefined) {
+    const rows = await sql`
+      UPDATE entries
+      SET
+        status = ${input.status},
+        metadata = metadata || ${JSON.stringify(updates)}::jsonb
+      WHERE id = ${id}
+        AND type = 'body_measurement_goal'
+      RETURNING id, title, status, metadata, created_at
+    `
+    return entryToGoal(rows[0] as Record<string, unknown>)
+  }
+
   const rows = await sql`
-    UPDATE body_measurement_goals
-    SET
-      target_value = COALESCE(${input.target_value ?? null}::decimal, target_value),
-      target_date = COALESCE(${input.target_date ?? null}::date, target_date),
-      status = COALESCE(${input.status ?? null}::text, status)
+    UPDATE entries
+    SET metadata = metadata || ${JSON.stringify(updates)}::jsonb
     WHERE id = ${id}
-    RETURNING *
+      AND type = 'body_measurement_goal'
+    RETURNING id, title, status, metadata, created_at
   `
-  return serializeGoal(rows[0] as Record<string, unknown>)
+  return entryToGoal(rows[0] as Record<string, unknown>)
 }
 
 export async function getAllMeasurementsForCalibration(): Promise<
   { weight_kg: number; muscle_mass_kg: number | null; skeletal_muscle_mass_kg: number | null; body_fat_mass_kg: number | null }[]
 > {
   const rows = await sql`
-    SELECT weight_kg, muscle_mass_kg, skeletal_muscle_mass_kg, body_fat_mass_kg
-    FROM body_measurements
-    ORDER BY measured_at ASC
+    SELECT
+      (metadata->>'weight_kg')::numeric AS weight_kg,
+      (metadata->>'muscle_mass_kg')::numeric AS muscle_mass_kg,
+      (metadata->>'skeletal_muscle_mass_kg')::numeric AS skeletal_muscle_mass_kg,
+      (metadata->>'body_fat_mass_kg')::numeric AS body_fat_mass_kg
+    FROM entries
+    WHERE type = 'body_measurement'
+    ORDER BY (metadata->>'measured_at')::timestamptz ASC
   `
   return rows as { weight_kg: number; muscle_mass_kg: number | null; skeletal_muscle_mass_kg: number | null; body_fat_mass_kg: number | null }[]
 }
@@ -121,15 +177,17 @@ export async function getMeasurementHistory(
   offset: number = 0
 ): Promise<{ rows: BodyMeasurement[]; total: number }> {
   const countResult = await sql`
-    SELECT COUNT(*)::int as total FROM body_measurements
+    SELECT COUNT(*)::int AS total FROM entries
+    WHERE type = 'body_measurement'
   `
   const rows = await sql`
-    SELECT * FROM body_measurements
-    ORDER BY measured_at DESC
+    SELECT id, metadata, created_at FROM entries
+    WHERE type = 'body_measurement'
+    ORDER BY (metadata->>'measured_at')::timestamptz DESC
     LIMIT ${limit} OFFSET ${offset}
   `
   return {
-    rows: rows as BodyMeasurement[],
+    rows: rows.map((r) => entryToMeasurement(r as Record<string, unknown>)),
     total: (countResult[0] as { total: number }).total,
   }
 }
