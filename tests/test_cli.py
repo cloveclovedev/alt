@@ -1,6 +1,6 @@
 """Tests for CLI argument parsing and output formatting."""
 
-from alt_db.cli import build_parser, format_entry, format_routine_event
+from alt_db.cli import build_parser, format_entry
 
 
 def test_entry_add_args():
@@ -12,10 +12,10 @@ def test_entry_add_args():
     assert args.title == "Test memo"
 
 
-def test_entry_add_with_tags():
+def test_entry_add_with_parent_id():
     parser = build_parser()
-    args = parser.parse_args(["entry", "add", "--type", "goal", "--title", "Goal", "--tags", '["peppercheck"]'])
-    assert args.tags == '["peppercheck"]'
+    args = parser.parse_args(["entry", "add", "--type", "memo", "--title", "Child", "--parent-id", "abc-123"])
+    assert args.parent_id == "abc-123"
 
 
 def test_entry_list_args():
@@ -44,31 +44,16 @@ def test_entry_update_args():
     assert args.status == "achieved"
 
 
+def test_entry_update_with_parent_id():
+    parser = build_parser()
+    args = parser.parse_args(["entry", "update", "abc-123", "--parent-id", "parent-456"])
+    assert args.parent_id == "parent-456"
+
+
 def test_entry_delete_args():
     parser = build_parser()
     args = parser.parse_args(["entry", "delete", "abc-123"])
     assert args.id == "abc-123"
-
-
-def test_routine_complete_args():
-    parser = build_parser()
-    args = parser.parse_args(["routine", "complete", "Clean the toilet", "household"])
-    assert args.command == "routine"
-    assert args.action == "complete"
-    assert args.name == "Clean the toilet"
-    assert args.category == "household"
-
-
-def test_routine_baseline_args():
-    parser = build_parser()
-    args = parser.parse_args(["routine", "baseline", "Take flea medicine", "dog", "--date", "2026-05-01"])
-    assert args.date == "2026-05-01"
-
-
-def test_routine_complete_with_note():
-    parser = build_parser()
-    args = parser.parse_args(["routine", "complete", "Dental checkup", "health", "--note", "Next: Oct 2026"])
-    assert args.note == "Next: Oct 2026"
 
 
 def test_format_entry():
@@ -77,25 +62,9 @@ def test_format_entry():
         "type": "goal",
         "title": "Launch app",
         "status": "active",
-        "tags": ["peppercheck"],
         "created_at": "2026-04-08 10:00:00+09:00",
     }
     output = format_entry(entry)
     assert "goal" in output
     assert "Launch app" in output
     assert "active" in output
-    assert "peppercheck" in output
-
-
-def test_format_routine_event():
-    event = {
-        "routine_name": "Clean the toilet",
-        "category": "household",
-        "completed_at": "2026-04-08 10:00:00+09:00",
-        "kind": "completed",
-        "note": None,
-    }
-    output = format_routine_event(event)
-    assert "Clean the toilet" in output
-    assert "household" in output
-    assert "completed" in output
