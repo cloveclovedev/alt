@@ -8,7 +8,7 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
 ## When invoked
 
 1. **Verify DB connection:**
-   Run: `uv run alt-db routine all` to confirm connectivity.
+   Run: `uv run alt-db --json entry list --type routine_event` to confirm connectivity.
 
 2. **Load routine definitions:**
    Read all YAML files in `data/routines/` to get the full list of routines with their intervals.
@@ -21,7 +21,8 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
    - `notes` (optional): free-text context displayed alongside the routine.
 
 3. **Load completion history:**
-   Run: `uv run alt-db routine all` to get last completion dates for all routines.
+   Run: `uv run alt-db --json entry list --type routine_event` to get all routine events.
+   Deduplicate by `title` — keep only the latest entry per routine name to get the last completion date for each.
 
 4. **Calculate overdue routines:**
    For each routine, compare `last_completed + interval_days` against today's date.
@@ -41,24 +42,38 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
    Display `notes` with "Notes:" prefix when present.
 
 6. **Check DB notes:**
-   When displaying routines, also check the latest completion record's `note` field for each routine.
+   When displaying routines, also check the latest completion record's `content` field for each routine.
    If a note exists (e.g., next appointment date, special instructions), display it alongside the routine.
-   Individual routine-specific details (next appointment, scheduling preferences, deferral reasons) should be stored in the DB `note` field — not in Claude Code memory or YAML definitions.
+   Individual routine-specific details (next appointment, scheduling preferences, deferral reasons) should be stored in the DB `content` field — not in Claude Code memory or YAML definitions.
 
 7. **Interactive actions:**
    Ask the user if they want to mark any routines as completed.
    Users can mark routines from any displayed section, including "Overdue (not actionable today)".
-   When completing a routine, always match the user's input against existing routine names from the `uv run alt-db routine all` output. Never create a new routine name — if no match is found, ask the user to clarify which routine they mean.
-   For each completion, run: `uv run alt-db routine complete "<name>" "<category>" --note "<optional note>"`
-   For setting a tracking baseline: `uv run alt-db routine baseline "<name>" "<category>" --date "<YYYY-MM-DD>" --note "<optional note>"`
-   When the user provides context about the next occurrence (e.g., next appointment date, deferral reason), include it in the note.
+   When completing a routine, always match the user's input against existing routine names from the entry list output. Never create a new routine name — if no match is found, ask the user to clarify which routine they mean.
+   For each completion, run:
+   ```bash
+   uv run alt-db entry add --type routine_event \
+     --title "<name>" \
+     --status completed \
+     --content "<optional note>" \
+     --metadata '{"category":"<category>","completed_at":"<current ISO timestamp>"}'
+   ```
+   For setting a tracking baseline:
+   ```bash
+   uv run alt-db entry add --type routine_event \
+     --title "<name>" \
+     --status baseline \
+     --content "<optional note>" \
+     --metadata '{"category":"<category>","completed_at":"<date>T00:00:00+09:00"}'
+   ```
+   When the user provides context about the next occurrence (e.g., next appointment date, deferral reason), include it in the note (content field).
    All notes MUST be written in English.
 
 8. **Correcting mistakes:**
    When a routine is incorrectly marked as completed, or a note needs correction:
-   1. Run `uv run alt-db routine history "<name>"` to list all records with IDs
-   2. Run `uv run alt-db routine delete <id>` to remove incorrect records
-   3. Run `uv run alt-db routine update-note <id> --note "..."` to fix notes on existing records
+   1. Run `uv run alt-db --json entry search "<name>"` then filter by `type=routine_event` to list all records with IDs
+   2. Run `uv run alt-db entry delete <id>` to remove incorrect records
+   3. Run `uv run alt-db entry update <id> --content "..."` to fix notes on existing records
 
 ## Output format
 

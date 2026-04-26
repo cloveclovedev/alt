@@ -57,9 +57,9 @@ Run these in parallel:
 3. **Routines (week view):**
    Read all YAML files in `data/routines/` to get routine definitions.
    ```bash
-   uv run alt-db routine all
+   uv run alt-db --json entry list --type routine_event
    ```
-   Determine which routines will be due this week based on last_completed + interval_days. Apply active_months filter.
+   Deduplicate by `title` keeping the latest per routine name. Determine which routines will be due this week based on last_completed + interval_days. Apply active_months filter.
 
 4. **Last week's daily plans:**
    ```bash
@@ -117,8 +117,7 @@ Save the plan to the entries table:
 ```bash
 uv run alt-db entry add --type weekly_plan --status posted \
   --title "Weekly Plan <monday YYYY-MM-DD>" \
-  --content "<plan_text>" \
-  --tags '["weekly-plan"]'
+  --content "<plan_text>"
 ```
 
 Post the plan to Discord:

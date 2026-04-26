@@ -39,7 +39,7 @@ Run these commands in parallel to collect today's context:
    ```
 
 3. **Overdue Routines:**
-   Run the routines skill logic (read YAMLs + `uv run alt-db routine all`) to identify overdue and due-soon routines.
+   Run the routines skill logic (read YAMLs + `uv run alt-db --json entry list --type routine_event`, deduplicate by title keeping latest per routine) to identify overdue and due-soon routines.
 
 4. **Discord Recent Notes (optional):**
    If anisecord bot is accessible, check recent messages in the daily report channel for context from previous days.
@@ -107,6 +107,5 @@ After posting to Discord, save the plan to the entries table for Cloud skip dete
 uv run alt-db entry add --type daily_plan --status posted \
   --title "Daily Plan <YYYY-MM-DD>" \
   --content "<plan_text>" \
-  --tags '["daily-plan"]' \
   --metadata '{"source": "local", "thread_id": "<thread_id>"}'
 ```

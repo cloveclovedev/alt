@@ -96,6 +96,5 @@ After posting to Discord, save the plan to the entries table for Cloud skip dete
 ```bash
 uv run alt-db entry add --type weekly_plan --status posted \
   --title "Weekly Plan <monday YYYY-MM-DD>" \
-  --content "<plan_text>" \
-  --tags '["weekly-plan"]'
+  --content "<plan_text>"
 ```

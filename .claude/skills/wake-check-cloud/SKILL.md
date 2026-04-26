@@ -107,7 +107,6 @@ Record the attempt in the database:
 uv run alt-db entry add --type wake_event --status sent \
   --title "Wake: <scenario> attempt <N>" \
   --content "<message>" \
-  --tags '["wake"]' \
   --metadata '{"attempt": <N>, "scenario": "<morning|night>", "target_time": "<HH:MM>"}'
 ```
 

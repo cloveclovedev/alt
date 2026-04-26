@@ -57,9 +57,9 @@ Run these in parallel:
 3. **Overdue Routines:**
    Read all YAML files in `data/routines/` to get routine definitions (name, interval_days, active_months, available_days, notes).
    ```bash
-   uv run alt-db routine all
+   uv run alt-db --json entry list --type routine_event
    ```
-   Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
+   Deduplicate by `title` keeping the latest per routine name. Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
 
 4. **Discord Recent Notes:**
    ```bash
@@ -120,7 +120,6 @@ Save the plan to the entries table (include thread_id in metadata):
 uv run alt-db entry add --type daily_plan --status posted \
   --title "Daily Plan <YYYY-MM-DD>" \
   --content "<plan_text>" \
-  --tags '["daily-plan"]' \
   --metadata '{"source": "cloud", "thread_id": "<thread_id>"}'
 ```
 

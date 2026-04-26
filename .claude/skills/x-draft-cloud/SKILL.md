@@ -138,8 +138,7 @@ Save each draft to the entries table:
 uv run alt-db entry add --type x_draft --status draft \
   --title "<one_line_summary>" \
   --content "<draft_text_with_hashtags>" \
-  --tags '["<relevant_project>"]' \
-  --metadata '{"source_commits": [...], "source_memo_count": <n>, "source_design_doc": "<filename_or_null>", "source_pr_url": "<url_or_null>", "generated_at": "<iso_timestamp>", "image_url": "<url_or_null>", "post_type": "<progress|technical|problem-solution|reflection>", "hashtags": ["#Tech", "#OSS"], "reply_link": "<url_or_null>", "reply_link_label": "詳細はこちら"}'
+  --metadata '{"source_commits": [...], "source_memo_count": <n>, "source_design_doc": "<filename_or_null>", "source_pr_url": "<url_or_null>", "generated_at": "<iso_timestamp>", "image_url": "<url_or_null>", "post_type": "<progress|technical|problem-solution|reflection>", "hashtags": ["#Tech", "#OSS"], "reply_link": "<url_or_null>", "reply_link_label": "詳細はこちら", "project": "<relevant_project>"}'
 ```
 
 Where:

@@ -46,13 +46,13 @@ Determine the current mode based on `<current_hour>`:
 
 Get yesterday's nutrition data:
 ```bash
-uv run alt-db --json nutrition-log summary --date <yesterday>
-uv run alt-db --json nutrition-log list --date <yesterday>
+uv run alt-db --json entry list --type nutrition_log --since 2d
 ```
+Filter results where `metadata.logged_date == <yesterday>`. Compute sums of `metadata.calories_kcal` and `metadata.protein_g`.
 
 Get yesterday's target:
 ```bash
-uv run alt-db --json nutrition-target active
+uv run alt-db --json entry list --type nutrition_target --status active
 ```
 
 Compose the morning summary in this format:
@@ -73,7 +73,7 @@ Compose the morning summary in this format:
 balance, suggestions for improvement>
 ```
 
-To check individual supplements, query logs with meal_type="supplement" for yesterday.
+To check individual supplements, filter logs where `metadata.meal_type == "supplement"` for yesterday.
 
 Post the summary to the **channel** (not thread):
 ```bash
@@ -84,7 +84,7 @@ uv run alt-discord post <channel_id> "<summary>"
 
 Get today's target:
 ```bash
-uv run alt-db --json nutrition-target active
+uv run alt-db --json entry list --type nutrition_target --status active
 ```
 
 Create a new thread for today:
@@ -106,7 +106,6 @@ Save the thread ID for later reference by storing it as an entry:
 uv run alt-db entry add --type nutrition_thread \
   --title "Nutrition Thread <today>" \
   --content "<thread_id>" \
-  --tags '["nutrition"]' \
   --metadata '{"date": "<today>", "thread_id": "<thread_id>"}'
 ```
 
@@ -137,10 +136,9 @@ print(json.dumps(msgs))
 
 For each message, check if already processed:
 ```bash
-uv run alt-db --json nutrition-log check-message --message-id <message_id>
+uv run alt-db --json entry search "<message_id>"
 ```
-
-Skip messages that are already processed. Also skip messages from the bot itself (check `author.bot == true`).
+Check if any result has `type=nutrition_log`. Skip messages that are already processed. Also skip messages from the bot itself (check `author.bot == true`).
 
 #### 3c: Process Each New Message
 
@@ -158,9 +156,9 @@ print(json.dumps(urls))
 
 2. **Check nutrition_items for known items**:
 ```bash
-uv run alt-db --json nutrition-item list
+uv run alt-db --json entry list --type nutrition_item
 ```
-Compare the message text against registered item names.
+Compare the message text against registered item names (stored in `title` field).
 
 3. **Determine meal_type** from the current hour:
    - Hour 10 check → "breakfast"
@@ -172,11 +170,11 @@ Compare the message text against registered item names.
 4. **Process based on content type**:
 
    **Known item match** (e.g., "プロテイン"):
-   - Use the registered nutrition values directly.
+   - Use the registered nutrition values directly from `metadata.calories_kcal` and `metadata.protein_g`.
    - `estimated_by = "item_lookup"`
 
    **"サプリ" keyword**:
-   - Create 3 separate log entries for each supplement (Dear-Natura Ca/Mg/Zn/VitD, Dear-Natura GOLD EPA&DHA, PURELAB カリウム).
+   - Create separate log entries for each supplement registered in `nutrition_item` entries with `meal_type="supplement"`.
    - Each with `meal_type="supplement"`, `supplement_taken=true`, `estimated_by="item_lookup"`.
 
    **Unknown text or image — use the following priority order:**
@@ -202,37 +200,41 @@ Compare the message text against registered item names.
    - Parse the item name, calories, and protein from the message.
    - Register in nutrition_items:
    ```bash
-   uv run alt-db nutrition-item add --name "<name>" --calories <cal> --protein <protein>
+   uv run alt-db entry add --type nutrition_item \
+     --title "<name>" \
+     --metadata '{"calories_kcal":<cal>,"protein_g":<protein>,"source":"user_registered"}'
    ```
    - Reply in thread confirming registration.
    - Do NOT create a nutrition_log entry for registration requests.
 
    **Item update/delete request**:
-   - Parse and execute the update/delete:
+   - Find the item first:
    ```bash
-   uv run alt-db nutrition-item update --name "<name>" --calories <cal>
-   uv run alt-db nutrition-item delete --name "<name>"
+   uv run alt-db --json entry search "<name>"
+   ```
+   Filter for `type=nutrition_item`, then:
+   ```bash
+   uv run alt-db entry update <id> --metadata '{"calories_kcal":<cal>,"protein_g":<protein>,"source":"user_registered"}'
+   uv run alt-db entry delete <id>
    ```
    - Reply in thread confirming the change.
 
 5. **Save to nutrition_logs**:
 ```bash
-uv run alt-db nutrition-log add \
-  --date <target_date> \
-  --meal-type <meal_type> \
-  --description "<food_description>" \
-  --calories <estimated_cal> \
-  --protein <estimated_protein> \
-  --source-message-id <message_id> \
-  --estimated-by <method>
+uv run alt-db entry add --type nutrition_log \
+  --title "<food_description>" \
+  --metadata '{"logged_date":"<target_date>","meal_type":"<meal_type>","calories_kcal":<estimated_cal>,"protein_g":<estimated_protein>,"source_message_id":"<message_id>","estimated_by":"<method>"}'
 ```
 
 #### 3d: Post Check-in
 
 Get daily summary:
 ```bash
-uv run alt-db --json nutrition-log summary --date <target_date>
-uv run alt-db --json nutrition-target active
+uv run alt-db --json entry list --type nutrition_log --since 2d
+```
+Filter by `metadata.logged_date == <target_date>` and compute sums. Also fetch:
+```bash
+uv run alt-db --json entry list --type nutrition_target --status active
 ```
 
 **For interim check (10/15/21)**, post to thread:
@@ -271,10 +273,9 @@ During Phase 3c processing, track LLM-estimated food names. After processing all
 
 ```bash
 uv run python3 -c "
-# Query for frequently LLM-estimated items
-# SELECT description, COUNT(*), AVG(calories_kcal), AVG(protein_g)
-# FROM nutrition_logs WHERE estimated_by = 'llm'
-# GROUP BY description HAVING COUNT(*) >= 3
+# Query for frequently LLM-estimated items from entry list
+# Filter type=nutrition_log, group by title where metadata.estimated_by == 'llm'
+# Count occurrences and compute averages for those with COUNT(*) >= 3
 "
 ```
 
