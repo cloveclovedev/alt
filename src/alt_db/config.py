@@ -8,16 +8,10 @@ from .connection import NeonHTTP
 
 def get(db: NeonHTTP, key: str, default: Any = None) -> Any:
     """Get a config value by key. Returns the deserialized JSON value, or default if not found."""
-    result = db.execute("SELECT value FROM config WHERE key = $1", [key])
+    result = db.execute("SELECT value::text FROM config WHERE key = $1", [key])
     if not result.rows:
         return default
-    value = result.rows[0][0]
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return value
-    return value
+    return json.loads(result.rows[0][0])
 
 
 def set(db: NeonHTTP, key: str, value: Any) -> None:

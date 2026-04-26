@@ -71,3 +71,13 @@ def test_set_updates_updated_at(config_db):
     ).rows[0]
     assert second[0] == first[0]            # created_at unchanged
     assert second[1] >= first[1]            # updated_at advanced (or equal under fast clock)
+
+
+def test_set_and_get_string_that_looks_like_json(config_db):
+    """A user-stored string that happens to be valid JSON should round-trip as a string."""
+    client, keys = config_db
+    keys.append("test.config.json_like_string")
+    config.set(client, "test.config.json_like_string", '{"not": "a dict"}')
+    result = config.get(client, "test.config.json_like_string")
+    assert result == '{"not": "a dict"}'
+    assert isinstance(result, str)
