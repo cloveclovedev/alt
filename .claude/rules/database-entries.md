@@ -12,14 +12,27 @@ Use `uv run alt-db entry` to manage entries in Neon Postgres (the second brain s
 | `tech_interest` | Technologies to explore or evaluate | "Look into Deno 2.0" |
 | `business` | Business-related decisions and plans | Revenue targets, strategy |
 
+## Type Mapping
+
+These entry types replaced dedicated tables in the old schema:
+
+| Old Table | Entry Type |
+|---|---|
+| routine_events | `routine_event` |
+| body_measurements | `body_measurement` |
+| body_measurement_goals | `body_measurement_goal` |
+| nutrition_items | `nutrition_item` |
+| nutrition_logs | `nutrition_log` |
+| nutrition_targets | `nutrition_target` |
+
 ## CLI Commands
 
 ```bash
 # Add
-uv run alt-db entry add --type <type> --title "Title" --content "Content" --tags '["tag1", "tag2"]'
+uv run alt-db entry add --type <type> --title "Title" --content "Content"
 
 # With status and metadata (e.g., goals)
-uv run alt-db entry add --type goal --title "Title" --status active --tags '["tag"]' --metadata '{"target_date":"2026-09"}'
+uv run alt-db entry add --type goal --title "Title" --status active --metadata '{"target_date":"2026-09"}'
 
 # List / Search
 uv run alt-db entry list --type <type>
@@ -45,15 +58,9 @@ Do NOT save:
 - Code patterns derivable from the codebase
 - Information already in CLAUDE.md or rules files
 
-## Tag Conventions
-
-Use lowercase, hyphenated tags. Prefer reusing existing tags over creating new ones.
-
-Common tags: `tech-stack`, `architecture`, `infrastructure`, `business`, `process`
-
 ## Language
 
-All entry content MUST be written in English — title, content, and tags. This aligns with the GitHub conventions rule (English for all persistent content).
+All entry content MUST be written in English — title and content. This aligns with the GitHub conventions rule (English for all persistent content).
 
 ## Content Guidelines
 

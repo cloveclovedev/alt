@@ -60,7 +60,7 @@ Core skills work with minimal setup (calendar + GitHub + Discord). Extension ski
 
 | Command | Purpose |
 |---------|---------|
-| `alt-db` | Database CRUD for entries, routines, nutrition, body metrics |
+| `alt-db` | Database CRUD for all entries (plans, goals, routines, nutrition, body metrics) |
 | `alt-discord` | Read and post Discord messages |
 | `alt-body` | Import InBody CSV data and calculate fitness metrics |
 | `alt-home-assistant` | Home Assistant TTS and device control |
@@ -83,6 +83,17 @@ Core skills work with minimal setup (calendar + GitHub + Discord). Extension ski
  Neon   Discord  Home    Google
  DB     Bot      Asst.   Calendar
 ```
+
+### Why a Single Table?
+
+Most applications use purpose-built tables for each domain. alt takes a different approach: one universal `entries` table for all data.
+
+This works because alt's "application layer" is an LLM, not compiled code. Claude Code interprets metadata flexibly based on skill instructions — it doesn't need column types to function correctly. The skill definition IS the schema.
+
+Benefits for forkers:
+- **Customize by editing skills alone** — no migrations, no schema changes
+- **One table to set up** — minimal Neon configuration to get started
+- **Add new data types freely** — just write a new skill with a new `type` value
 
 ## Requirements
 
