@@ -51,6 +51,28 @@ def build_parser() -> argparse.ArgumentParser:
     entry_delete = entry_sub.add_parser("delete")
     entry_delete.add_argument("id")
 
+    # --- config ---
+    config_parser = subparsers.add_parser("config")
+    config_sub = config_parser.add_subparsers(dest="action", required=True)
+
+    # config get
+    config_get = config_sub.add_parser("get")
+    config_get.add_argument("key")
+
+    # config set
+    config_set = config_sub.add_parser("set")
+    config_set.add_argument("key")
+    config_set.add_argument("value", nargs="?", default=None)
+    config_set.add_argument("--from-file", dest="from_file")
+
+    # config list
+    config_list = config_sub.add_parser("list")
+    config_list.add_argument("--prefix")
+
+    # config delete
+    config_delete = config_sub.add_parser("delete")
+    config_delete.add_argument("key")
+
     return parser
 
 
@@ -78,7 +100,10 @@ def main():
 
     db = NeonHTTP.from_env()
     try:
-        _handle_entry(db, args, use_json)
+        if args.command == "entry":
+            _handle_entry(db, args, use_json)
+        elif args.command == "config":
+            _handle_config(db, args, use_json)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -140,4 +165,45 @@ def _handle_entry(db, args, use_json: bool):
             print(f"Deleted entry {args.id}")
         else:
             print(f"Entry {args.id} not found", file=sys.stderr)
+            sys.exit(1)
+
+
+def _handle_config(db, args, use_json: bool):
+    from . import config as config_mod
+
+    if args.action == "get":
+        value = config_mod.get(db, args.key)
+        if value is None:
+            print(f"Key not found: {args.key}", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(value))
+
+    elif args.action == "set":
+        if args.from_file:
+            with open(args.from_file) as f:
+                value = json.load(f)
+        else:
+            if args.value is None:
+                print("Error: must provide either VALUE or --from-file", file=sys.stderr)
+                sys.exit(1)
+            value = json.loads(args.value)
+        config_mod.set(db, args.key, value)
+        if use_json:
+            print(json.dumps({"key": args.key}))
+        else:
+            print(f"Set {args.key}")
+
+    elif args.action == "list":
+        results = config_mod.list_configs(db, prefix=args.prefix)
+        if use_json:
+            print(json.dumps(results, default=str))
+        else:
+            for row in results:
+                print(f"{row['key']} = {json.dumps(row['value'])}")
+
+    elif args.action == "delete":
+        if config_mod.delete(db, args.key):
+            print(f"Deleted {args.key}")
+        else:
+            print(f"Key not found: {args.key}", file=sys.stderr)
             sys.exit(1)
