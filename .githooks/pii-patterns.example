@@ -1,0 +1,28 @@
+# PII patterns to block from commits (template).
+#
+# Copy this file to `.githooks/pii-patterns` (gitignored) and add your own
+# personal patterns. The actual `pii-patterns` file is per-contributor and is
+# never committed, so each maintainer/contributor controls what their own
+# pre-commit hook should reject.
+#
+# Format: one extended regex per line. Lines starting with `#` are comments.
+# Add `pii-ok` as a comment on any line to suppress a match.
+#
+# A pre-commit hook script that reads this file is not bundled — wire one up
+# yourself if you want pattern blocking on commit. Without a script, this file
+# just documents the patterns you care about.
+
+# Examples (uncomment and adapt — these are placeholders, not real values):
+
+# Personal GitHub username (if different from your public identity)
+# my-private-username
+
+# Internal codenames or projects you don't want public
+# internal-project-name
+
+# Personal data that shouldn't appear in tests or code
+# height.*=.*X\.YZ
+# HEIGHT.*=.*X\.YZ
+
+# Personal subdomains, deploy URLs, hostnames
+# my-personal-host\.example\.com
