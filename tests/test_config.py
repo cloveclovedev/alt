@@ -115,3 +115,16 @@ def test_list_configs_includes_timestamps(config_db):
     row = results[0]
     assert "created_at" in row
     assert "updated_at" in row
+
+
+def test_delete_existing_returns_true(config_db):
+    client, _ = config_db
+    config.set(client, "test.delete.target", "value")
+    # No need to track in keys — delete handles it
+    assert config.delete(client, "test.delete.target") is True
+    assert config.get(client, "test.delete.target") is None
+
+
+def test_delete_missing_returns_false(config_db):
+    client, _ = config_db
+    assert config.delete(client, "test.delete.never_existed") is False

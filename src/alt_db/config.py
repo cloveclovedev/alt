@@ -46,3 +46,9 @@ def _row_to_dict(row) -> dict:
         "created_at": str(row[2]),
         "updated_at": str(row[3]),
     }
+
+
+def delete(db: NeonHTTP, key: str) -> bool:
+    """Delete a config entry. Returns True if deleted."""
+    result = db.execute("DELETE FROM config WHERE key = $1", [key])
+    return result.row_count > 0
