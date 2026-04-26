@@ -11,14 +11,16 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
    Run: `uv run alt-db --json entry list --type routine_event` to confirm connectivity.
 
 2. **Load routine definitions:**
-   Read all YAML files in `data/routines/` to get the full list of routines with their intervals.
+   Run: `uv run alt-db --json entry list --type routine_definition` to get all routine definitions.
 
-   Each routine has required and optional fields:
-   - `name` (required): routine name
-   - `interval_days` (required): days between completions
-   - `active_months` (optional): array of months 1-12 when routine is active. Omit = always active.
-   - `available_days` (optional): array of days (`mon`-`sun`) when routine can be actioned. Omit = any day.
-   - `notes` (optional): free-text context displayed alongside the routine.
+   Each routine definition entry has:
+   - `title`: routine name
+   - `content`: notes (optional, may be null)
+   - `status`: "active" (inactive definitions should be ignored)
+   - `metadata.category`: routine category
+   - `metadata.interval_days`: days between completions
+   - `metadata.active_months` (optional): array of months 1-12 when routine is active. Absent = always active.
+   - `metadata.available_days` (optional): array of days (`mon`-`sun`) when routine can be actioned. Absent = any day.
 
 3. **Load completion history:**
    Run: `uv run alt-db --json entry list --type routine_event` to get all routine events.
@@ -39,12 +41,13 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
    - **Overdue (not actionable today)**: past due or due soon, but today is not in `available_days`
    - **Due Soon**: within 3 days of due AND actionable today
 
-   Display `notes` with "Notes:" prefix when present.
+   Display `notes` with "Notes:" prefix when present. Notes come from two sources:
+   - The routine definition's `content` field (persistent notes like "Requires coin laundry")
+   - The latest completion record's `content` field (e.g., next appointment date)
+   Show both if both exist.
 
 6. **Check DB notes:**
-   When displaying routines, also check the latest completion record's `content` field for each routine.
-   If a note exists (e.g., next appointment date, special instructions), display it alongside the routine.
-   Individual routine-specific details (next appointment, scheduling preferences, deferral reasons) should be stored in the DB `content` field — not in Claude Code memory or YAML definitions.
+   Individual routine-specific details (next appointment, scheduling preferences, deferral reasons) should be stored in the completion entry's `content` field — not in Claude Code memory or routine definitions.
 
 7. **Interactive actions:**
    Ask the user if they want to mark any routines as completed.

@@ -5,7 +5,7 @@ Personal planning and knowledge hub powered by Claude Code skills.
 ## Project Structure
 
 - `.claude/skills/` — Claude Code skills for planning, routines, health
-- Routine definitions are in YAML files in `data/routines/`; completion events are entries (type `routine_event`)
+- Routine definitions are entries (type `routine_definition`); completion events are entries (type `routine_event`)
 - `alt.toml` — Project configuration
 
 ## Key Commands
@@ -23,4 +23,4 @@ Personal planning and knowledge hub powered by Claude Code skills.
 ## Configuration
 
 Edit `alt.toml` for Discord channel IDs, GitHub repos, calendar settings.
-Routine definitions are in YAML files in `data/routines/`.
+Routine definitions are entries (type `routine_definition`).

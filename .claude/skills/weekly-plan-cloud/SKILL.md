@@ -55,10 +55,11 @@ Run these in parallel:
    ```
 
 3. **Routines (week view):**
-   Read all YAML files in `data/routines/` to get routine definitions.
    ```bash
+   uv run alt-db --json entry list --type routine_definition
    uv run alt-db --json entry list --type routine_event
    ```
+   Routine definitions have: `title` (name), `content` (notes), `metadata.category`, `metadata.interval_days`, `metadata.active_months`, `metadata.available_days`.
    Deduplicate by `title` keeping the latest per routine name. Determine which routines will be due this week based on last_completed + interval_days. Apply active_months filter.
 
 4. **Last week's daily plans:**

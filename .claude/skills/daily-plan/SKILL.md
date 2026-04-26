@@ -39,7 +39,7 @@ Run these commands in parallel to collect today's context:
    ```
 
 3. **Overdue Routines:**
-   Run the routines skill logic (read YAMLs + `uv run alt-db --json entry list --type routine_event`, deduplicate by title keeping latest per routine) to identify overdue and due-soon routines.
+   Run the routines skill logic (`uv run alt-db --json entry list --type routine_definition` for definitions + `uv run alt-db --json entry list --type routine_event` for completions, deduplicate by title keeping latest per routine) to identify overdue and due-soon routines.
 
 4. **Discord Recent Notes (optional):**
    If anisecord bot is accessible, check recent messages in the daily report channel for context from previous days.
