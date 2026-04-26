@@ -30,23 +30,19 @@ Parse the output into `<hour>` (integer) and `<day_of_week>` (integer).
 
 Match the current hour and day against the dispatch table below. Invoke each skill **sequentially** using the `Skill` tool.
 
-x-post-cloud runs **every hour** as the first skill. All other skills keep their existing schedule:
+The trigger fires 8 times per day at JST 0/6/10/12/15/18/19/21 (HH:23). x-post-cloud runs first at every slot; other skills run at their designated slots.
 
 | Hour | Day     | Skills (invoke in this order)                                                                     |
 |------|---------|---------------------------------------------------------------------------------------------------|
 | 0    | Daily   | x-post-cloud → nutrition-check-cloud                                                              |
-| 1-5  | Daily   | x-post-cloud                                                                                      |
 | 6    | Daily   | x-post-cloud → nutrition-check-cloud                                                              |
-| 7-9  | Daily   | x-post-cloud                                                                                      |
 | 10   | Sun (7) | x-post-cloud → weekly-plan-cloud → daily-plan-cloud → x-draft-cloud → nutrition-check-cloud       |
 | 10   | 1-6     | x-post-cloud → daily-plan-cloud → x-draft-cloud → nutrition-check-cloud                           |
-| 11-14| Daily   | x-post-cloud                                                                                      |
+| 12   | Daily   | x-post-cloud                                                                                      |
 | 15   | Daily   | x-post-cloud → nutrition-check-cloud                                                              |
-| 16-17| Daily   | x-post-cloud                                                                                      |
-| 18   | Daily   | x-post-cloud → x-draft-cloud                                                                     |
-| 19-20| Daily   | x-post-cloud                                                                                      |
+| 18   | Daily   | x-post-cloud → x-draft-cloud                                                                      |
+| 19   | Daily   | x-post-cloud                                                                                      |
 | 21   | Daily   | x-post-cloud → nutrition-check-cloud                                                              |
-| 22-23| Daily   | x-post-cloud                                                                                      |
 
 For each skill in the matched row:
 1. Invoke it using the `Skill` tool with the skill name (e.g., `x-post-cloud`)
