@@ -1,4 +1,4 @@
-import { getLatestRoutineEvents } from "@/lib/queries"
+import { getLatestRoutineEntries } from "@/lib/queries"
 import {
   Table,
   TableBody,
@@ -10,12 +10,10 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 export default async function RoutinesPage() {
-  const events = await getLatestRoutineEvents()
-
+  const events = await getLatestRoutineEntries()
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Routines</h1>
-
       {events.length === 0 ? (
         <p className="text-muted-foreground">No routine events recorded.</p>
       ) : (
@@ -32,18 +30,20 @@ export default async function RoutinesPage() {
           <TableBody>
             {events.map((event) => (
               <TableRow key={event.id}>
-                <TableCell className="font-medium">{event.routine_name}</TableCell>
+                <TableCell className="font-medium">{event.title}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{event.category}</Badge>
+                  <Badge variant="outline">{String(event.metadata.category ?? "")}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{event.kind}</Badge>
+                  <Badge variant="secondary">{event.status ?? ""}</Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {new Date(event.completed_at).toLocaleDateString()}
+                  {event.metadata.completed_at
+                    ? new Date(String(event.metadata.completed_at)).toLocaleDateString()
+                    : "—"}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {event.note || "—"}
+                  {event.content || "—"}
                 </TableCell>
               </TableRow>
             ))}

@@ -15,7 +15,6 @@ export default async function EntriesPage(props: {
   searchParams: Promise<{
     type?: string
     status?: string
-    tag?: string
     q?: string
   }>
 }) {
@@ -23,7 +22,6 @@ export default async function EntriesPage(props: {
   const entries = await listEntries({
     type: searchParams.type || null,
     status: searchParams.status || null,
-    tag: searchParams.tag || null,
     search: searchParams.q || null,
   })
 
@@ -45,7 +43,6 @@ export default async function EntriesPage(props: {
                 <TableHead>Title</TableHead>
                 <TableHead className="w-28">Type</TableHead>
                 <TableHead className="w-28">Status</TableHead>
-                <TableHead>Tags</TableHead>
                 <TableHead className="w-32">Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -65,15 +62,6 @@ export default async function EntriesPage(props: {
                   </TableCell>
                   <TableCell>
                     {entry.status && <Badge variant="secondary">{entry.status}</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {entry.tags.map((tag: string) => (
-                        <Badge key={tag} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(entry.created_at).toLocaleDateString()}

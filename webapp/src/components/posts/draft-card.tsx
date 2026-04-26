@@ -169,16 +169,6 @@ export function DraftCard({ draft, nextSlot, defaultTimes, occupiedSlots }: Draf
           </div>
         </div>
 
-        {draft.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {draft.tags.map((tag: string) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
         {meta.reply_link && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span>🔗</span>

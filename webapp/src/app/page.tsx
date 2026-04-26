@@ -47,15 +47,6 @@ export default async function DashboardPage() {
                 {goals.map((goal) => (
                   <li key={goal.id}>
                     <p className="font-medium">{goal.title}</p>
-                    {goal.tags.length > 0 && (
-                      <div className="mt-1 flex gap-1">
-                        {goal.tags.map((tag: string) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </li>
                 ))}
               </ul>

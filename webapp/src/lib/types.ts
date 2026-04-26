@@ -4,25 +4,15 @@ export interface Entry {
   title: string
   content: string | null
   status: string | null
-  tags: string[]
   metadata: Record<string, unknown>
+  parent_id: string | null
   created_at: string
   updated_at: string
-}
-
-export interface RoutineEvent {
-  id: string
-  routine_name: string
-  category: string
-  completed_at: string
-  kind: string
-  note: string | null
 }
 
 export interface EntryFilters {
   type?: string | null
   status?: string | null
-  tag?: string | null
   search?: string | null
   limit?: number
 }

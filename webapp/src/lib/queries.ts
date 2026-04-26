@@ -1,9 +1,9 @@
 import { sql } from "./db"
-import type { Entry, EntryFilters, RoutineEvent } from "./types"
+import type { Entry, EntryFilters } from "./types"
 
 export async function getActiveGoals(): Promise<Entry[]> {
   const rows = await sql`
-    SELECT * FROM entries
+    SELECT id, type, title, content, status, metadata, parent_id, created_at, updated_at FROM entries
     WHERE type = 'goal' AND status = 'active'
     ORDER BY created_at DESC
   `
@@ -12,7 +12,7 @@ export async function getActiveGoals(): Promise<Entry[]> {
 
 export async function getRecentMemos(days: number): Promise<Entry[]> {
   const rows = await sql`
-    SELECT * FROM entries
+    SELECT id, type, title, content, status, metadata, parent_id, created_at, updated_at FROM entries
     WHERE type = 'memo'
       AND created_at >= NOW() - make_interval(days => ${days})
     ORDER BY created_at DESC
@@ -22,7 +22,7 @@ export async function getRecentMemos(days: number): Promise<Entry[]> {
 
 export async function getUpcomingDeadlines(days: number): Promise<Entry[]> {
   const rows = await sql`
-    SELECT * FROM entries
+    SELECT id, type, title, content, status, metadata, parent_id, created_at, updated_at FROM entries
     WHERE type = 'goal'
       AND status = 'active'
       AND metadata->>'target_date' ~ '^\d{4}-\d{2}-\d{2}$'
@@ -34,15 +34,13 @@ export async function getUpcomingDeadlines(days: number): Promise<Entry[]> {
 }
 
 export async function listEntries(filters: EntryFilters): Promise<Entry[]> {
-  const { type = null, status = null, tag = null, search = null, limit = 50 } = filters
+  const { type = null, status = null, search = null, limit = 50 } = filters
   const searchPattern = search ? `%${search}%` : null
-  const tagJson = tag ? JSON.stringify([tag]) : null
 
   const rows = await sql`
-    SELECT * FROM entries
+    SELECT id, type, title, content, status, metadata, parent_id, created_at, updated_at FROM entries
     WHERE (${type}::text IS NULL OR type = ${type})
       AND (${status}::text IS NULL OR status = ${status})
-      AND (${tagJson}::jsonb IS NULL OR tags @> ${tagJson}::jsonb)
       AND (${searchPattern}::text IS NULL OR title ILIKE ${searchPattern} OR content ILIKE ${searchPattern})
     ORDER BY created_at DESC
     LIMIT ${limit}
@@ -50,13 +48,14 @@ export async function listEntries(filters: EntryFilters): Promise<Entry[]> {
   return rows as Entry[]
 }
 
-export async function getLatestRoutineEvents(): Promise<RoutineEvent[]> {
+export async function getLatestRoutineEntries(): Promise<Entry[]> {
   const rows = await sql`
-    SELECT DISTINCT ON (routine_name) *
-    FROM routine_events
-    ORDER BY routine_name, completed_at DESC
+    SELECT DISTINCT ON (title) id, type, title, content, status, metadata, parent_id, created_at, updated_at
+    FROM entries
+    WHERE type = 'routine_event'
+    ORDER BY title, created_at DESC
   `
-  return rows as RoutineEvent[]
+  return rows as Entry[]
 }
 
 export async function getXDrafts(): Promise<Entry[]> {
