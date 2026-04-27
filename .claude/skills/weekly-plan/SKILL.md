@@ -16,15 +16,13 @@ TZ=Asia/Tokyo date +%Y-%m-%d
 Use this date to compute `<monday>` (start of current week) and `<next-monday>` for all subsequent queries.
 
 1. **Google Calendar (full week):**
-   Fetch from ALL calendars in parallel. First get the calendar list, then query each:
-   ```bash
-   gws calendar calendarList list --format yaml
-   ```
-   Then for each calendar (skip "Holidays in Japan" and "Weather"):
-   ```bash
-   gws calendar events list --params '{"calendarId": "<calendar-id>", "timeMin": "<monday>T00:00:00+09:00", "timeMax": "<next-monday>T00:00:00+09:00", "singleEvents": true, "orderBy": "startTime"}' --format yaml
-   ```
-   Read calendar context: `uv run alt-db config get plan.google_calendar.context`
+   Use Google Calendar MCP connector tools:
+   - `list_calendars` to get all calendars
+   - `list_events` for each calendar (skip "Holidays in Japan" and "Weather"), timeMin=`<monday>T00:00:00+09:00`, timeMax=`<next-monday>T00:00:00+09:00`
+   - Apply calendar context rules from `plan.google_calendar.context` (read via `uv run alt-db config get plan.google_calendar.context`)
+
+   **Calendar notes:**
+   - The "Event" calendar is a memo/reminder calendar for optional activities (e.g., basketball open gym, movie discount days). Do not include these in the main schedule — list them separately as optional items or mention as brief reminders.
 
 2. **GitHub Issues & Milestones:**
    ```bash
