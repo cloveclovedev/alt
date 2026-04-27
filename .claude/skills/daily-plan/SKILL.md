@@ -18,16 +18,10 @@ Use this date as `<today>` for all subsequent queries. Also compute `<sunday>` (
 Run these commands in parallel to collect today's context:
 
 1. **Google Calendar (today + rest of week):**
-   Fetch from ALL calendars in parallel. First get the calendar list, then query each:
-   ```bash
-   # Get all calendar IDs
-   gws calendar calendarList list --format yaml
-   ```
-   Then for each calendar (skip "Holidays in Japan" and "Weather"):
-   ```bash
-   gws calendar events list --params '{"calendarId": "<calendar-id>", "timeMin": "<today>T00:00:00+09:00", "timeMax": "<sunday>T23:59:59+09:00", "singleEvents": true, "orderBy": "startTime"}' --format yaml
-   ```
-   Read calendar context: `uv run alt-db config get plan.google_calendar.context`
+   Use Google Calendar MCP connector tools:
+   - `list_calendars` to get all calendars
+   - `list_events` for each calendar (skip "Holidays in Japan" and "Weather"), timeMin=`<today>T00:00:00+09:00`, timeMax=`<sunday>T23:59:59+09:00`
+   - Apply calendar context rules from `plan.google_calendar.context` (read via `uv run alt-db config get plan.google_calendar.context`)
 
    **Calendar notes:**
    - The "Event" calendar is a memo/reminder calendar for optional activities (e.g., basketball open gym, movie discount days). Do not include these in the main schedule — list them separately as optional items in "Rest of Week Overview" or mention as a brief reminder when relevant to today.
