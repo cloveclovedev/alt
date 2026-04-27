@@ -56,11 +56,11 @@ Run these in parallel:
 
 3. **Overdue Routines:**
    ```bash
-   uv run alt-db --json entry list --type routine_definition
+   uv run alt-db --json config get routines
    uv run alt-db --json entry list --type routine_event
    ```
-   Routine definitions have: `title` (name), `content` (notes), `metadata.category`, `metadata.interval_days`, `metadata.active_months`, `metadata.available_days`.
-   Deduplicate by `title` keeping the latest per routine name. Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
+   `config.routines` is a JSON object keyed by routine name; each value has: `content` (optional notes), `category`, `interval_days`, `active_months` (optional), `available_days` (optional).
+   For routine_event entries, deduplicate by `title` keeping the latest per routine name. Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
 
 4. **Discord Recent Notes:**
    ```bash

@@ -56,11 +56,11 @@ Run these in parallel:
 
 3. **Routines (week view):**
    ```bash
-   uv run alt-db --json entry list --type routine_definition
+   uv run alt-db --json config get routines
    uv run alt-db --json entry list --type routine_event
    ```
-   Routine definitions have: `title` (name), `content` (notes), `metadata.category`, `metadata.interval_days`, `metadata.active_months`, `metadata.available_days`.
-   Deduplicate by `title` keeping the latest per routine name. Determine which routines will be due this week based on last_completed + interval_days. Apply active_months filter.
+   `config.routines` is a JSON object keyed by routine name; each value has: `content` (optional notes), `category`, `interval_days`, `active_months` (optional), `available_days` (optional).
+   For routine_event entries, deduplicate by `title` keeping the latest per routine name. Determine which routines will be due this week based on last_completed + interval_days. Apply active_months filter.
 
 4. **Last week's daily plans:**
    ```bash
