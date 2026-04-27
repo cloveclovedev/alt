@@ -27,19 +27,19 @@ Run these commands in parallel to collect today's context:
    ```bash
    gws calendar events list --params '{"calendarId": "<calendar-id>", "timeMin": "<today>T00:00:00+09:00", "timeMax": "<sunday>T23:59:59+09:00", "singleEvents": true, "orderBy": "startTime"}' --format yaml
    ```
-   Read `alt.toml` for calendar context interpretation rules.
+   Read calendar context: `uv run alt-db config get plan.google_calendar.context`
 
    **Calendar notes:**
    - The "Event" calendar is a memo/reminder calendar for optional activities (e.g., basketball open gym, movie discount days). Do not include these in the main schedule — list them separately as optional items in "Rest of Week Overview" or mention as a brief reminder when relevant to today.
 
 2. **GitHub Issues:**
-   Read `alt.toml` [github] repos list. For each repo:
+   Read GitHub repos: `uv run alt-db config get plan.github.repos`. For each repo:
    ```bash
    gh issue list --repo <repo> --state open --json number,title,labels,milestone,updatedAt
    ```
 
 3. **Overdue Routines:**
-   Run the routines skill logic (`uv run alt-db --json entry list --type routine_definition` for definitions + `uv run alt-db --json entry list --type routine_event` for completions, deduplicate by title keeping latest per routine) to identify overdue and due-soon routines.
+   Run the routines skill logic (`uv run alt-db config get routines` for definitions + `uv run alt-db --json entry list --type routine_event` for completions, deduplicate by title keeping latest per routine) to identify overdue and due-soon routines.
 
 4. **Discord Recent Notes (optional):**
    If a Discord bot is configured, check recent messages in the daily report channel for context from previous days.
@@ -96,7 +96,7 @@ Post the plan with threading:
 ```bash
 uv run alt-discord post-thread <daily_channel_id> "📋 <YYYY-MM-DD> (<Day>) Daily Plan" "<plan_text>"
 ```
-Read `daily_channel_id` from `alt.toml` `[discord]` section. Parse the JSON output to extract `thread_id`.
+Read daily channel: `uv run alt-db config get plan.discord.channel_id`. Parse the JSON output to extract `thread_id`.
 
 The posted plan should be a concise summary reflecting the discussion outcome (revised schedule, priorities, notes), not the raw Phase 2 output.
 

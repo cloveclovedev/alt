@@ -24,7 +24,7 @@ Use this date to compute `<monday>` (start of current week) and `<next-monday>` 
    ```bash
    gws calendar events list --params '{"calendarId": "<calendar-id>", "timeMin": "<monday>T00:00:00+09:00", "timeMax": "<next-monday>T00:00:00+09:00", "singleEvents": true, "orderBy": "startTime"}' --format yaml
    ```
-   Read `alt.toml` for calendar context interpretation rules.
+   Read calendar context: `uv run alt-db config get plan.google_calendar.context`
 
 2. **GitHub Issues & Milestones:**
    ```bash
@@ -86,7 +86,7 @@ Based on the discussion, offer output options:
 2. **Save locally** — Write the plan to a local file
 3. **Both**
 
-For Discord posting, read `daily_channel_id` from `alt.toml` and use:
+For Discord posting, read the daily channel: `uv run alt-db config get plan.discord.channel_id` and use:
 ```bash
 uv run alt-discord post <daily_channel_id> "<plan text>"
 ```

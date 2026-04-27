@@ -4,27 +4,12 @@ import argparse
 import json
 import sys
 
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
-
-from pathlib import Path
-
 from dotenv import load_dotenv
 
+from alt_db.connection import NeonHTTP
+from alt_db import config
+
 from .client import HomeAssistantClient
-
-
-def _find_config() -> dict:
-    """Find and parse alt.toml from the project root."""
-    path = Path(__file__).resolve()
-    for parent in path.parents:
-        toml_path = parent / "alt.toml"
-        if toml_path.exists():
-            with open(toml_path, "rb") as f:
-                return tomllib.load(f)
-    return {}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     # tts
     tts_parser = subparsers.add_parser("tts", help="Send TTS message to a media player")
     tts_parser.add_argument("message", help="Text to speak")
-    tts_parser.add_argument("--entity", help="media_player entity ID (default: from alt.toml)")
+    tts_parser.add_argument("--entity", help="media_player entity ID (default: from config)")
 
     # state
     state_parser = subparsers.add_parser("state", help="Get entity state")
@@ -58,14 +43,16 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
 
-    config = _find_config()
     client = HomeAssistantClient.from_env()
 
     try:
         if args.command == "tts":
-            entity = args.entity or config.get("home_assistant", {}).get("tts_entity")
+            entity = args.entity
             if not entity:
-                print("Error: --entity required (or set home_assistant.tts_entity in alt.toml)", file=sys.stderr)
+                db = NeonHTTP.from_env()
+                entity = config.get(db, "core.home_assistant.tts_entity")
+            if not entity:
+                print("Error: --entity required (or set core.home_assistant.tts_entity in config)", file=sys.stderr)
                 sys.exit(1)
             client.tts(args.message, entity_id=entity)
             print(json.dumps({"status": "sent", "entity": entity, "message": args.message}))

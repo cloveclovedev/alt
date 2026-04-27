@@ -34,19 +34,19 @@ if entries:
 ```
 If empty (no previous draft), use 24 hours ago as the lookback boundary.
 
-Read `alt.toml` for configuration:
-- `[github] repos` — list of repos to check
-- `[discord] daily_channel_id` — daily plan channel
-- `[discord.content] memo_channel_id` — memo source channel
-- `[discord.content] draft_channel_id` — draft output channel (journal)
-- `[x.product_links]` — product name to URL mapping for self-reply links
+Read configuration via:
+- `uv run alt-db config get plan.github.repos` — repos to scan
+- `uv run alt-db config get plan.discord.channel_id` — daily plan channel (for context lookup)
+- `uv run alt-db config get draft.x.discord.input_channel_ids` — memo source channels (array)
+- `uv run alt-db config get draft.x.discord.channel_id` — draft output channel (journal)
+- `uv run alt-db config get draft.x.product_links` — product name to URL mapping for self-reply links
 
 ### Phase 2: Data Collection
 
 Run these in parallel:
 
 1. **GitHub Activity (since last draft):**
-   For each repo in `[github] repos`:
+   For each repo in `plan.github.repos`:
    ```bash
    gh api "/repos/{owner}/{repo}/commits?since=<last_draft_time>&per_page=20" --jq '.[].commit.message'
    ```
@@ -66,8 +66,9 @@ Run these in parallel:
    If images are found, include the first relevant image URL when saving the draft.
 
 2. **Discord Memos (since last draft):**
+   For each `<channel_id>` in `draft.x.discord.input_channel_ids` (array — may contain one or more channels):
    ```bash
-   uv run alt-discord read <memo_channel_id> --after <last_draft_time>
+   uv run alt-discord read <channel_id> --after <last_draft_time>
    ```
 
 3. **Today's Daily Plan:**
@@ -112,10 +113,10 @@ If there is material, read `x-post-guide.md` in this skill directory for style g
 2. For `progress` / `technical` / `problem-solution`: use tech name hashtag + optionally `#OSS`
 3. For `reflection`: use `#個人開発` or `#OSS`
 
-**Determine reply_link** from `[x.product_links]` in `alt.toml`:
+**Determine reply_link** from `uv run alt-db config get draft.x.product_links`:
 1. Product website (if the draft's primary tag matches a key in `product_links`)
 2. Source PR URL (if the draft originated from a specific merged PR)
-3. GitHub repository URL (from `[github] repos`)
+3. GitHub repository URL (from `plan.github.repos`)
 4. null (no self-reply — use this if no relevant link exists)
 
 **Deduplicate against existing drafts:**

@@ -30,10 +30,10 @@ uv run alt-db entry list --type daily_plan --since 1d
 ```
 If any entry's title contains today's date string (e.g., "Daily Plan 2026-04-09"), end the session silently — no Discord post, no further action.
 
-Read `alt.toml` for configuration:
-- `[github] repos` — list of repos to check
-- `[discord] daily_channel_id` — plan posting channel
-- `[calendar]` — timezone and context interpretation rules
+Read configuration via:
+- `uv run alt-db config get plan.github.repos` — list of repos to check
+- `uv run alt-db config get plan.discord.channel_id` — plan posting channel
+- `uv run alt-db config get plan.google_calendar.context` — calendar interpretation rules
 
 ### Phase 2: Data Collection
 
@@ -43,24 +43,24 @@ Run these in parallel:
    Use Google Calendar MCP connector tools:
    - `list_calendars` to get all calendars
    - `list_events` for each calendar (skip "Holidays in Japan" and "Weather"), timeMin=`<today>T00:00:00+09:00`, timeMax=`<sunday>T23:59:59+09:00`
-   - Apply calendar context rules from `alt.toml [calendar]`
+   - Apply calendar context rules from the `plan.google_calendar.context` value
 
    **Calendar notes:**
    - The "Event" calendar is a memo/reminder calendar for optional activities (e.g., basketball open gym, movie discount days). Do not include these in the main schedule — list them separately as optional items in "Rest of Week Overview" or mention as a brief reminder when relevant to today.
 
 2. **GitHub Issues:**
-   For each repo in `[github] repos`:
+   For each repo in `plan.github.repos`:
    ```bash
    gh issue list --repo <repo> --state open --json number,title,labels,milestone,updatedAt
    ```
 
 3. **Overdue Routines:**
    ```bash
-   uv run alt-db --json entry list --type routine_definition
+   uv run alt-db --json config get routines
    uv run alt-db --json entry list --type routine_event
    ```
-   Routine definitions have: `title` (name), `content` (notes), `metadata.category`, `metadata.interval_days`, `metadata.active_months`, `metadata.available_days`.
-   Deduplicate by `title` keeping the latest per routine name. Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
+   `config.routines` is a JSON object keyed by routine name; each value has: `content` (optional notes), `category`, `interval_days`, `active_months` (optional), `available_days` (optional).
+   For routine_event entries, deduplicate by `title` keeping the latest per routine name. Compare `last_completed + interval_days` against today. Apply active_months and available_days filters per the routines skill logic.
 
 4. **Discord Recent Notes:**
    ```bash

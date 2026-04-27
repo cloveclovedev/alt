@@ -18,10 +18,16 @@ alt turns Claude Code into a personal assistant that:
    uv sync
    ```
 
-2. Configure:
+2. Configure credentials and seed config:
    ```bash
-   cp alt.toml.example alt.toml   # Edit with your values
-   cp .env.example .env           # Add your credentials
+   cp .env.example .env           # Add your credentials (database, Discord bot token, etc.)
+   ```
+
+   After applying DB migrations (see below), populate app configuration via:
+   ```bash
+   uv run alt-db config set plan.discord.channel_id '"<your-channel-id>"'
+   uv run alt-db config set plan.github.repos '["your-org/your-repo"]'
+   # ... see docs/superpowers/specs/2026-04-27-config-table-design.md for the full key list
    ```
 
 3. Set up the database:
@@ -106,7 +112,7 @@ Benefits for forkers:
 
 ## Configuration
 
-- `alt.toml` — App settings (Discord channels, GitHub repos, schedule preferences). See `alt.toml.example`.
+- `config` table (Postgres) — App settings (Discord channels, GitHub repos, schedule preferences). Manage via `uv run alt-db config`.
 - `.env` — Credentials (database, Discord bot token). See `.env.example`.
 
 ## Development
