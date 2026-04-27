@@ -6,7 +6,7 @@ Personal planning and knowledge hub powered by Claude Code skills.
 
 - `.claude/skills/` — Claude Code skills for planning, routines, health
 - Routine definitions are entries (type `routine_definition`); completion events are entries (type `routine_event`)
-- `alt.toml` — Project configuration
+- `config` table — Project configuration (managed via `uv run alt-db config`)
 
 ## Key Commands
 
@@ -22,5 +22,5 @@ Personal planning and knowledge hub powered by Claude Code skills.
 
 ## Configuration
 
-Edit `alt.toml` for Discord channel IDs, GitHub repos, calendar settings.
+Manage Discord channel IDs, GitHub repos, calendar settings via `uv run alt-db config set/get`.
 Routine definitions are entries (type `routine_definition`).

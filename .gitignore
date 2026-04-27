@@ -1,6 +1,5 @@
 # Personal data and configuration
 data/
-alt.toml
 .claude/skills/x-draft-cloud/x-post-guide.md
 .githooks/pii-patterns
 
