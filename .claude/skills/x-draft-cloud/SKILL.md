@@ -66,8 +66,9 @@ Run these in parallel:
    If images are found, include the first relevant image URL when saving the draft.
 
 2. **Discord Memos (since last draft):**
+   For each `<channel_id>` in `draft.x.discord.input_channel_ids` (array — may contain one or more channels):
    ```bash
-   uv run alt-discord read <memo_channel_id> --after <last_draft_time>
+   uv run alt-discord read <channel_id> --after <last_draft_time>
    ```
 
 3. **Today's Daily Plan:**

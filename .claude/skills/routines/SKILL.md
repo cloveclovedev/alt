@@ -53,7 +53,7 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
 7. **Interactive actions:**
    Ask the user if they want to mark any routines as completed.
    Users can mark routines from any displayed section, including "Overdue (not actionable today)".
-   When completing a routine, always match the user's input against existing routine names from the entry list output. Never create a new routine name — if no match is found, ask the user to clarify which routine they mean.
+   When completing a routine, always match the user's input against existing routine names from the `config.routines` object (the keys loaded in step 2). Never create a new routine name — if no match is found, ask the user to clarify which routine they mean.
    For each completion, run:
    ```bash
    uv run alt-db entry add --type routine_event \
