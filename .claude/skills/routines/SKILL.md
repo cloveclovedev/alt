@@ -11,16 +11,17 @@ description: Use when checking routine tasks, viewing overdue items, or marking 
    Run: `uv run alt-db --json entry list --type routine_event` to confirm connectivity.
 
 2. **Load routine definitions:**
-   Run: `uv run alt-db --json entry list --type routine_definition` to get all routine definitions.
+   Run: `uv run alt-db config get routines` to get the routines object (keys = routine names, values = definitions).
 
-   Each routine definition entry has:
-   - `title`: routine name
-   - `content`: notes (optional, may be null)
+   Each routine definition (the value under each name) has:
+   - `content`: notes (optional, may be absent)
    - `status`: "active" (inactive definitions should be ignored)
-   - `metadata.category`: routine category
-   - `metadata.interval_days`: days between completions
-   - `metadata.active_months` (optional): array of months 1-12 when routine is active. Absent = always active.
-   - `metadata.available_days` (optional): array of days (`mon`-`sun`) when routine can be actioned. Absent = any day.
+   - `category`: routine category
+   - `interval_days`: days between completions
+   - `active_months` (optional): array of months 1-12 when routine is active. Absent = always active.
+   - `available_days` (optional): array of days (`mon`-`sun`) when routine can be actioned. Absent = any day.
+
+   The routine name (the key in the JSON object) is what `entries.routine_event.title` refers to — matching is unchanged.
 
 3. **Load completion history:**
    Run: `uv run alt-db --json entry list --type routine_event` to get all routine events.
