@@ -1,4 +1,5 @@
 import { getBodyMeasurements, getBodyGoals, getLatestMeasurement, getAllMeasurementsForCalibration } from "@/lib/body"
+import { getConfig } from "@/lib/config"
 import {
   periodStartDate,
   PRIMARY_METRICS,
@@ -13,8 +14,6 @@ import { LatestSummary } from "@/components/body/latest-summary"
 import { MeasurementHistory } from "@/components/body/measurement-history"
 import type { Period, BodyGoal } from "@/lib/types"
 
-const HEIGHT_M = Number(process.env.NEXT_PUBLIC_HEIGHT_M ?? "1.70")
-
 interface BodyPageProps {
   searchParams: Promise<{ period?: string }>
 }
@@ -24,11 +23,12 @@ export default async function BodyPage({ searchParams }: BodyPageProps) {
   const period = (periodParam ?? "90d") as Period
   const startDate = periodStartDate(period)
 
-  const [measurements, allGoals, latest, allForCalibration] = await Promise.all([
+  const [measurements, allGoals, latest, allForCalibration, heightM] = await Promise.all([
     getBodyMeasurements(startDate),
     getBodyGoals(),
     getLatestMeasurement(),
     getAllMeasurementsForCalibration(),
+    getConfig<number>("body.height_m", 1.7),
   ])
 
   const activeGoals = allGoals.filter((g) => g.status === "active")
@@ -46,7 +46,7 @@ export default async function BodyPage({ searchParams }: BodyPageProps) {
     derived = derivedGoals({
       targetWeight: weightGoal.target_value,
       targetSkm: skmGoal.target_value,
-      heightM: HEIGHT_M,
+      heightM: heightM ?? 1.7,
       calibration,
     })
 
