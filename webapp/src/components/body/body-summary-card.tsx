@@ -1,19 +1,19 @@
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card"
 import { getBodyMeasurements, getBodyGoals, getLatestMeasurement, getAllMeasurementsForCalibration } from "@/lib/body"
+import { getConfig } from "@/lib/config"
 import { periodStartDate, PRIMARY_METRICS, computeCalibration, derivedGoals } from "@/lib/body-utils"
 import { MetricChart } from "./metric-chart"
 import type { BodyGoal } from "@/lib/types"
 
-const HEIGHT_M = Number(process.env.NEXT_PUBLIC_HEIGHT_M ?? "1.70")
-
 export async function BodySummaryCard() {
   const startDate = periodStartDate("90d")
-  const [measurements, goals, latest, allForCalibration] = await Promise.all([
+  const [measurements, goals, latest, allForCalibration, heightM] = await Promise.all([
     getBodyMeasurements(startDate),
     getBodyGoals("active"),
     getLatestMeasurement(),
     getAllMeasurementsForCalibration(),
+    getConfig<number>("body.height_m", 1.7),
   ])
 
   if (measurements.length === 0) {
@@ -45,7 +45,7 @@ export async function BodySummaryCard() {
     const derived = derivedGoals({
       targetWeight: weightGoal.target_value,
       targetSkm: skmGoal.target_value,
-      heightM: HEIGHT_M,
+      heightM: heightM ?? 1.7,
       calibration,
     })
 
