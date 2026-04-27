@@ -76,32 +76,47 @@ CREATE TABLE config (
 
 ## Key naming convention
 
-**Rule:** dot-notation flat keys for atomic settings; single key with a JSONB object for user-defined collections.
+**Rule:** keys follow `<function>.<integration>.<param>` (or `<function>.<param>` for function-internal settings). Dot-notation flat keys for atomic settings; single key with a JSONB object for user-defined collections.
+
+The top-level segment names a feature area:
+- `core` — cross-cutting setup shared by multiple features
+- `plan` — daily/weekly planning workflow
+- `draft` — content drafting (currently `draft.x.*` for X posts)
+- `nutrition` — nutrition tracking
+- `wake` — wake-up / sleep schedule
+- `body` — body composition tracking
+
+The second segment, when present, names the integration the value belongs to (`discord`, `github`, `google_calendar`, `home_assistant`, `x`).
 
 ### Atomic settings (fixed schema) → granular dot keys
 
 ```
-discord.daily_channel_id            -> "1410506698967220224"
-discord.content.memo_channel_id     -> "..."
-discord.content.draft_channel_id    -> "..."
-github.repos                        -> ["cloveclovedev/alt", ...]
-calendar.timezone                   -> "Asia/Tokyo"
-calendar.context                    -> "..."
-x.default_post_times                -> ["12:00", "19:00"]
-body.height_m                       -> 1.73
-wake.default_wakeup_time            -> "06:30"
-wake.calendar_adaptive              -> true
-wake.prep_minutes                   -> 60
-wake.escalation.interval_minutes    -> 10
-wake.escalation.max_attempts        -> 3
-wake.night.default_bedtime          -> "23:00"
-wake.night.calendar_lookahead       -> true
-home_assistant.url                  -> "http://homeassistant.local:8123"
-home_assistant.tts_entity           -> "media_player.living_room"
-nutrition.channel_id                -> "..."
-nutrition.protein_coefficient       -> 2.0
-nutrition.activity_factor           -> 1.5
-nutrition.lean_bulk_surplus_kcal    -> 200
+plan.discord.channel_id                  -> "1410506698967220224"
+plan.github.repos                        -> ["cloveclovedev/alt", ...]
+plan.google_calendar.context             -> "..."
+
+core.timezone                            -> "Asia/Tokyo"
+core.home_assistant.url                  -> "http://homeassistant.local:8123"
+core.home_assistant.tts_entity           -> "media_player.living_room"
+
+draft.x.post_times                       -> ["12:00", "19:00"]
+draft.x.discord.channel_id               -> "..."         # where drafts are posted
+draft.x.discord.input_channel_ids        -> ["..."]       # source memo channels (array)
+
+body.height_m                            -> 1.73
+
+wake.wakeup_time                         -> "06:30"
+wake.google_calendar.adaptive            -> true
+wake.prep_minutes                        -> 60
+wake.escalation.interval_minutes         -> 10
+wake.escalation.max_attempts             -> 3
+wake.night.bedtime                       -> "23:00"
+wake.night.google_calendar.lookahead     -> true
+
+nutrition.discord.channel_id             -> "..."
+nutrition.protein_coefficient            -> 2.0
+nutrition.activity_factor                -> 1.5
+nutrition.lean_bulk_surplus_kcal         -> 200
 ```
 
 Independent atomic settings — granular updates make sense; deep keys map directly to skill / CLI lookups.
@@ -109,10 +124,10 @@ Independent atomic settings — granular updates make sense; deep keys map direc
 ### User-defined collections → single key with JSONB object
 
 ```
-x.product_links            -> { "peppercheck": "https://...", "alt": "https://..." }
-routines                   -> { "Clean the toilet": {...}, "朝の歯磨き": {...} }
-nutrition_targets          -> { "daily": {...} }
-body_measurement_goals     -> { "weight": {...} }
+draft.x.product_links     -> { "peppercheck": "https://...", "alt": "https://..." }
+routines                  -> { "Clean the toilet": {...}, "朝の歯磨き": {...} }
+nutrition_targets         -> { "daily": {...} }
+body_measurement_goals    -> { "weight": {...} }
 ```
 
 User-chosen names of arbitrary count → store the whole collection as one JSONB object. Adding / removing items = read-modify-write the whole value.

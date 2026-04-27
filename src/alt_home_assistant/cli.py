@@ -50,9 +50,9 @@ def main():
             entity = args.entity
             if not entity:
                 db = NeonHTTP.from_env()
-                entity = config.get(db, "home_assistant.tts_entity")
+                entity = config.get(db, "core.home_assistant.tts_entity")
             if not entity:
-                print("Error: --entity required (or set home_assistant.tts_entity in config)", file=sys.stderr)
+                print("Error: --entity required (or set core.home_assistant.tts_entity in config)", file=sys.stderr)
                 sys.exit(1)
             client.tts(args.message, entity_id=entity)
             print(json.dumps({"status": "sent", "entity": entity, "message": args.message}))
