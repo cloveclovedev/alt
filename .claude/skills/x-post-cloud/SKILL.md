@@ -32,7 +32,7 @@ Filter entries where `metadata.scheduled_at <= current_time`. If none are due, l
 
 ### Phase 2: Post Each Draft
 
-Read `alt.toml` for `[discord.content] draft_channel_id`.
+Read draft channel: `uv run alt-db config get draft.x.discord.channel_id`.
 
 For each draft due for posting:
 

@@ -24,13 +24,18 @@ TZ=Asia/Tokyo date '+%Y-%m-%dT%H:%M:%S+09:00'
 ```
 Use this to derive `<today>` (YYYY-MM-DD), `<current_time>` (HH:MM), and `<day_of_week>`.
 
-Read `alt.toml` for configuration:
-- `[wake]` — wake-up time, calendar_adaptive, prep_minutes
-- `[wake.escalation]` — interval_minutes, max_attempts
-- `[wake.night]` — bedtime, calendar_lookahead
-- `[home_assistant]` — tts_entity
-- `[discord]` — daily_channel_id
-- `[calendar]` — timezone, context
+Read configuration via:
+- `uv run alt-db config get wake.wakeup_time`
+- `uv run alt-db config get wake.google_calendar.adaptive`
+- `uv run alt-db config get wake.prep_minutes`
+- `uv run alt-db config get wake.escalation.interval_minutes`
+- `uv run alt-db config get wake.escalation.max_attempts`
+- `uv run alt-db config get wake.night.bedtime`
+- `uv run alt-db config get wake.night.google_calendar.lookahead`
+- `uv run alt-db config get core.home_assistant.tts_entity`
+- `uv run alt-db config get plan.discord.channel_id`
+- `uv run alt-db config get core.timezone`
+- `uv run alt-db config get plan.google_calendar.context`
 
 Determine the **active scenario** based on current time:
 

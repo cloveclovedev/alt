@@ -24,12 +24,12 @@ TZ=Asia/Tokyo date '+%Y-%m-%dT%H:%M:%S+09:00'
 ```
 Use this to derive `<today>` (YYYY-MM-DD), `<yesterday>` (YYYY-MM-DD), and `<current_hour>` (HH).
 
-Read `alt.toml` for configuration:
-- `[nutrition] channel_id` — Discord channel for threads
-- `[nutrition] protein_coefficient` — g per kg body weight (for target recalculation)
-- `[nutrition] activity_factor` — activity multiplier (for target recalculation)
-- `[nutrition] lean_bulk_surplus_kcal` — daily caloric surplus (for target recalculation)
-- `[discord] daily_channel_id` — fallback if nutrition channel not set
+Read configuration via:
+- `uv run alt-db config get nutrition.discord.channel_id` — Discord channel for threads
+- `uv run alt-db config get nutrition.protein_coefficient` — g per kg body weight
+- `uv run alt-db config get nutrition.activity_factor`
+- `uv run alt-db config get nutrition.lean_bulk_surplus_kcal`
+- `uv run alt-db config get plan.discord.channel_id` — fallback if nutrition channel not set
 
 Determine the current mode based on `<current_hour>`:
 - **Hour 6** → `morning-summary`

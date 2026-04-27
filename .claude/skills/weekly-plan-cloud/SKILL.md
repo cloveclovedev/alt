@@ -30,10 +30,10 @@ uv run alt-db entry list --type weekly_plan --since 7d
 ```
 If any entry's title contains this week's Monday date string (e.g., "Weekly Plan 2026-04-06"), end the session silently — no Discord post, no further action.
 
-Read `alt.toml` for configuration:
-- `[github] repos` — list of repos to check
-- `[discord] daily_channel_id` — plan posting channel
-- `[calendar]` — timezone and context interpretation rules
+Read configuration via:
+- `uv run alt-db config get plan.github.repos` — list of repos to check
+- `uv run alt-db config get plan.discord.channel_id` — plan posting channel
+- `uv run alt-db config get plan.google_calendar.context` — calendar interpretation rules
 
 ### Phase 2: Data Collection
 
@@ -43,13 +43,13 @@ Run these in parallel:
    Use Google Calendar MCP connector tools:
    - `list_calendars` to get all calendars
    - `list_events` for each calendar (skip "Holidays in Japan" and "Weather"), timeMin=`<monday>T00:00:00+09:00`, timeMax=`<next-monday>T00:00:00+09:00`
-   - Apply calendar context rules from `alt.toml [calendar]`
+   - Apply calendar context rules from the `plan.google_calendar.context` value
 
    **Calendar notes:**
    - The "Event" calendar is a memo/reminder calendar for optional activities (e.g., basketball open gym, movie discount days). Do not include these in the main schedule — list them separately as optional items or mention as brief reminders.
 
 2. **GitHub Issues & Milestones:**
-   For each repo in `[github] repos`:
+   For each repo in `plan.github.repos`:
    ```bash
    gh issue list --repo <repo> --state open --json number,title,labels,milestone,updatedAt
    ```
