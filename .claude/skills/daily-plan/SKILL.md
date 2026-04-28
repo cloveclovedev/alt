@@ -44,6 +44,13 @@ Run these commands in parallel to collect today's context:
    - Recent memos (last 7 days): `uv run alt-db entry list --since 7d`
    - Goals with approaching deadlines: `uv run alt-db entry list --type goal --due-within 7d`
 
+6. **Tasks (Active and Backlog):**
+   ```bash
+   uv run alt-db --json entry list --type task --status active
+   uv run alt-db --json entry list --type task --status backlog
+   ```
+   These are personal tasks tracked in the entries table (separate from GitHub issues). Sort active by priority (P0→P3, then unprioritized) then by `metadata.due_date` (earliest first, no-due last). Backlog is used for duplicate detection during the Phase 3 promotion flow.
+
 ### Phase 2: Present Summary
 
 Present all gathered information organized as:
@@ -56,6 +63,12 @@ Present all gathered information organized as:
 ## Recommended Issues (GitHub)
 Select up to 5 recommended issues based on priority (P0/P1 first), milestone urgency, and recent activity. Do not list all open issues — the weekly plan covers that.
 - repo#123: Issue title [P1]
+- ...
+
+## Tasks (Active)
+- [P1] Title (due 2026-04-28)
+  - Sub-task: Title
+- [P2] Title
 - ...
 
 ## Routines Due
@@ -81,6 +94,11 @@ Discuss with the user:
 - Any tasks to defer or add?
 - Time blocking suggestions based on calendar gaps
 - Which routines to handle today?
+- Promote Discord memos to tasks: review the recent memos collected in Phase 1 step 4. For each memo line that looks like an actionable task:
+  1. Check existing tasks for similar titles via `uv run alt-db --json entry list --type task --status active` and `--status backlog` (already collected in step 6) — judge similarity semantically (not pattern-based).
+  2. If similar exists, ask: "Existing task `<title>` looks similar — register new, append note to existing, or skip?"
+  3. If no similar task exists, propose registration with draft title/status/priority/due_date and confirm with the user.
+  4. On approval, register: `uv run alt-db entry add --type task --title "<title>" --status <active|backlog> --metadata '{"priority":"...","due_date":"..."}'`
 
 ### Phase 4: Post to Discord
 
@@ -99,11 +117,13 @@ Based on the Phase 3 discussion outcome, generate a concise channel summary:
 🔧 repo#456: issue title
 📅 Notable calendar event HH:MM
 ✅ Routine item
+📌 Task title — due today (P1)
 ```
 
 - **🔧** Issues decided to work on today
 - **📅** Calendar events requiring action or attention
 - **✅** Routines to handle today
+- **📌** Notable tasks: status=active AND (due_date<=today OR priority in [P0,P1]). Cap at 2-3 lines; remaining active tasks live in the thread detail.
 - One item per line, icon repeated per item
 - Omit categories with no items
 - Blank line between title and items
@@ -114,6 +134,7 @@ The full plan reflects the discussion outcome (revised schedule, priorities, not
 
 - **Today's Schedule** — full calendar event list
 - **Recommended Issues** — curated issue candidates with priority labels
+- **Tasks (Active)** — sorted by priority then due_date; sub-tasks indented under their parent
 - **Routines Due** — overdue and upcoming
 - **Goals & Reminders** — active goals, approaching deadlines, memos
 - **Rest of Week Overview** — upcoming events and deadlines

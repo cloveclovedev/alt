@@ -74,6 +74,12 @@ Run these in parallel:
    uv run alt-db entry list --type goal --due-within 7d
    ```
 
+6. **Tasks (Active):**
+   ```bash
+   uv run alt-db --json entry list --type task --status active
+   ```
+   Sort by priority (P0→P3, then unprioritized) then by `metadata.due_date` (earliest first, no-due last).
+
 ### Phase 3: Plan Generation
 
 Generate a daily plan autonomously using the collected data.
@@ -87,11 +93,13 @@ Generate a daily plan autonomously using the collected data.
 🔧 repo#456: issue title
 📅 Notable calendar event HH:MM
 ✅ Routine item
+📌 Task title — due today (P1)
 ```
 
 - **🔧** P0/P1 issues (auto-selected by priority)
 - **📅** Calendar events requiring preparation or action
 - **✅** Overdue and today-due routines
+- **📌** Notable tasks: status=active AND (due_date<=today OR priority in [P0,P1]). Cap at 2-3 lines; remaining active tasks live in the thread detail.
 - One item per line, icon repeated per item
 - Omit categories with no items
 - Blank line between title and items
@@ -106,6 +114,12 @@ Generate a daily plan autonomously using the collected data.
 ## Recommended Issues
 Select up to 5 recommended issues based on priority (P0/P1 first), milestone urgency, and recent activity. Do not list all open issues — the weekly plan covers that.
 - repo#123: Issue title [P1]
+- ...
+
+## Tasks (Active)
+- [P1] Title (due 2026-04-28)
+  - Sub-task: Title
+- [P2] Title
 - ...
 
 ## Routines Due
@@ -127,6 +141,7 @@ Prioritization logic (autonomous, no user input):
 - Calendar commitments are immovable
 - Overdue routines are flagged
 - Suggest time blocking based on calendar gaps
+- Possible task candidates: scan recent Discord memos collected in Phase 2 step 4. If any line is clearly actionable (concrete verb + object, optional date), include it in the thread detail under a `## Possible Task Candidates` section so the user can register it on the next interactive run. Do NOT call `entry add` autonomously — risk of spurious entries from misjudged memos is too high.
 
 ### Phase 4: Save and Post
 
