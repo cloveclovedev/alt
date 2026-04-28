@@ -6,7 +6,7 @@ import json
 from dotenv import load_dotenv
 
 from .reader import fetch_messages, format_messages
-from .poster import post_message
+from .poster import post_message, split_message, create_thread_from_message
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     pt_parser.add_argument("channel_id")
     pt_parser.add_argument("thread_name")
     pt_parser.add_argument("message")
+    pt_parser.add_argument("--message-id", default=None, help="Existing message ID to create thread on (skip channel post)")
 
     return parser
 
@@ -49,25 +50,36 @@ def main():
         print(json.dumps({"message_ids": message_ids, "chunks": len(message_ids)}))
 
     elif args.command == "post-thread":
-        from .poster import split_message, create_thread_from_message
-
-        chunks = split_message(args.message)
-        # Post first chunk to the channel
-        first_ids = post_message(args.channel_id, chunks[0])
-        first_message_id = first_ids[0]
-        # Create thread on that message
-        thread = create_thread_from_message(
-            args.channel_id, first_message_id, args.thread_name
-        )
-        thread_id = thread["id"]
-        # Post remaining chunks inside the thread
-        for chunk in chunks[1:]:
-            post_message(thread_id, chunk)
-        print(json.dumps({
-            "message_id": first_message_id,
-            "thread_id": thread_id,
-            "chunks": len(chunks),
-        }))
+        if args.message_id:
+            # Create thread on an existing message, post body into the thread
+            thread = create_thread_from_message(
+                args.channel_id, args.message_id, args.thread_name
+            )
+            thread_id = thread["id"]
+            chunks = split_message(args.message)
+            for chunk in chunks:
+                post_message(thread_id, chunk)
+            print(json.dumps({
+                "message_id": args.message_id,
+                "thread_id": thread_id,
+                "chunks": len(chunks),
+            }))
+        else:
+            # Original behavior: post first chunk to channel, create thread, post rest
+            chunks = split_message(args.message)
+            first_ids = post_message(args.channel_id, chunks[0])
+            first_message_id = first_ids[0]
+            thread = create_thread_from_message(
+                args.channel_id, first_message_id, args.thread_name
+            )
+            thread_id = thread["id"]
+            for chunk in chunks[1:]:
+                post_message(thread_id, chunk)
+            print(json.dumps({
+                "message_id": first_message_id,
+                "thread_id": thread_id,
+                "chunks": len(chunks),
+            }))
 
 
 if __name__ == "__main__":

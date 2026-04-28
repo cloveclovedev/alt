@@ -53,9 +53,9 @@ Present all gathered information organized as:
 - HH:MM-HH:MM [Calendar] Event name
 - ...
 
-## Development Tasks (GitHub)
-Group issues by priority label (P1 first, then P2). Issues without priority labels are listed separately.
-- repo#123: Issue title [label1, label2]
+## Recommended Issues (GitHub)
+Select up to 5 recommended issues based on priority (P0/P1 first), milestone urgency, and recent activity. Do not list all open issues — the weekly plan covers that.
+- repo#123: Issue title [P1]
 - ...
 
 ## Routines Due
@@ -86,20 +86,61 @@ Discuss with the user:
 
 After the planning discussion is complete, **always** post the finalized plan to Discord. Do not ask — just post it.
 
-Post the plan with threading:
-```bash
-uv run alt-discord post-thread <daily_channel_id> "📋 <YYYY-MM-DD> (<Day>) Daily Plan" "<plan_text>"
+Read daily channel: `uv run alt-db config get plan.discord.channel_id`.
+
+**Step 1: Generate the summary**
+
+Based on the Phase 3 discussion outcome, generate a concise channel summary:
+
 ```
-Read daily channel: `uv run alt-db config get plan.discord.channel_id`. Parse the JSON output to extract `thread_id`.
+📋 <YYYY-MM-DD> (<Day>) Daily Plan
 
-The posted plan should be a concise summary reflecting the discussion outcome (revised schedule, priorities, notes), not the raw Phase 2 output.
+🔧 repo#123: issue title
+🔧 repo#456: issue title
+📅 Notable calendar event HH:MM
+✅ Routine item
+```
 
-The `post-thread` command handles the 2000 character limit automatically — the first chunk is posted to the channel, a thread is created on it, and any remaining chunks are posted inside the thread.
+- **🔧** Issues decided to work on today
+- **📅** Calendar events requiring action or attention
+- **✅** Routines to handle today
+- One item per line, icon repeated per item
+- Omit categories with no items
+- Blank line between title and items
 
-After posting to Discord, save the plan to the entries table for Cloud skip detection:
+**Step 2: Generate the full plan**
+
+The full plan reflects the discussion outcome (revised schedule, priorities, notes). Use these sections:
+
+- **Today's Schedule** — full calendar event list
+- **Recommended Issues** — curated issue candidates with priority labels
+- **Routines Due** — overdue and upcoming
+- **Goals & Reminders** — active goals, approaching deadlines, memos
+- **Rest of Week Overview** — upcoming events and deadlines
+
+**Step 3: Post summary to channel**
+
+```bash
+uv run alt-discord post "<daily_channel_id>" "<summary_text>"
+```
+
+Parse the JSON output to extract `message_ids[0]` as `<summary_message_id>`.
+
+**Step 4: Post full plan to thread**
+
+```bash
+uv run alt-discord post-thread "<daily_channel_id>" "📋 <YYYY-MM-DD> (<Day>) Daily Plan" "<full_plan_text>" --message-id <summary_message_id>
+```
+
+Parse the JSON output to extract `thread_id`.
+
+**Step 5: Save to DB**
+
+Combine summary and full plan for storage:
+
 ```bash
 uv run alt-db entry add --type daily_plan --status posted \
   --title "Daily Plan <YYYY-MM-DD>" \
-  --content "<plan_text>" \
+  --content "<summary_text>\n\n---\n\n<full_plan_text>" \
   --metadata '{"source": "local", "thread_id": "<thread_id>"}'
 ```

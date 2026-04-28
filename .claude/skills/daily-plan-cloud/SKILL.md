@@ -76,16 +76,36 @@ Run these in parallel:
 
 ### Phase 3: Plan Generation
 
-Generate a daily plan autonomously using the collected data. Use this output format:
+Generate a daily plan autonomously using the collected data.
+
+**Summary (for channel message):**
+
+```
+📋 <YYYY-MM-DD> (<Day>) Daily Plan
+
+🔧 repo#123: issue title
+🔧 repo#456: issue title
+📅 Notable calendar event HH:MM
+✅ Routine item
+```
+
+- **🔧** P0/P1 issues (auto-selected by priority)
+- **📅** Calendar events requiring preparation or action
+- **✅** Overdue and today-due routines
+- One item per line, icon repeated per item
+- Omit categories with no items
+- Blank line between title and items
+
+**Full plan (for thread):**
 
 ```
 ## Today's Schedule (YYYY-MM-DD Day)
 - HH:MM-HH:MM [Calendar] Event name
 - ...
 
-## Development Tasks (GitHub)
-Group issues by priority label (P1 first, then P2). Issues without priority labels are listed separately.
-- repo#123: Issue title [label1, label2]
+## Recommended Issues
+Select up to 5 recommended issues based on priority (P0/P1 first), milestone urgency, and recent activity. Do not list all open issues — the weekly plan covers that.
+- repo#123: Issue title [P1]
 - ...
 
 ## Routines Due
@@ -110,21 +130,25 @@ Prioritization logic (autonomous, no user input):
 
 ### Phase 4: Save and Post
 
-Post the plan to Discord with threading:
+**Post summary to channel:**
 ```bash
-uv run alt-discord post-thread <daily_channel_id> "📋 <YYYY-MM-DD> (<Day>) Daily Plan" "<plan_text>"
+uv run alt-discord post "<daily_channel_id>" "<summary_text>"
+```
+Parse the JSON output to extract `message_ids[0]` as `<summary_message_id>`.
+
+**Post full plan to thread:**
+```bash
+uv run alt-discord post-thread "<daily_channel_id>" "📋 <YYYY-MM-DD> (<Day>) Daily Plan" "<full_plan_text>" --message-id <summary_message_id>
 ```
 Parse the JSON output to extract `thread_id`.
 
-Save the plan to the entries table (include thread_id in metadata):
+**Save to DB:**
 ```bash
 uv run alt-db entry add --type daily_plan --status posted \
   --title "Daily Plan <YYYY-MM-DD>" \
-  --content "<plan_text>" \
+  --content "<summary_text>\n\n---\n\n<full_plan_text>" \
   --metadata '{"source": "cloud", "thread_id": "<thread_id>"}'
 ```
-
-The `post-thread` command handles the 2000 character limit automatically — the first chunk is posted to the channel, a thread is created on it, and any remaining chunks are posted inside the thread.
 
 ### Environment Variables (set in Cloud environment)
 
