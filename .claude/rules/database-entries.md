@@ -31,6 +31,7 @@ Each section follows the same shape:
 - Metadata: schema for the JSON metadata column
 - Content: how the content column is used
 - Parent: how parent_id is used
+- Title: format convention (include only when the title format is load-bearing — e.g., used as a query key, a routine name match, or a date-encoded identifier)
 - Lifecycle: how entries of this type come into being and transition
 - Consumers: skills/UI that read this type
 
@@ -94,6 +95,7 @@ Each section follows the same shape:
 - Metadata: { category: string, completed_at: "ISO8601 with offset" }
 - Content: optional note about the completion (e.g., next appointment date)
 - Parent: not used
+- Title: routine name; must match a key in `config.routines` (the routines skill matches completion records to definitions by title)
 - Lifecycle: created when a routine is performed (`completed`) or when establishing a starting point for a new routine (`baseline`)
 - Consumers: routines skill (overdue/due-soon calculation), daily-plan (overdue routines), weekly-plan (week's routines)
 
@@ -130,7 +132,7 @@ Each section follows the same shape:
 ### nutrition_log
 
 - Status: not used
-- Metadata: { logged_date: "YYYY-MM-DD", meal_type: "breakfast|lunch|dinner|snack|supplement", calories_kcal: number, protein_g: number, source_message_id: string, estimated_by: "registered" | "llm" }
+- Metadata: { logged_date: "YYYY-MM-DD", meal_type: "breakfast|lunch|dinner|snack|supplement", calories_kcal: number, protein_g: number, source_message_id: string, estimated_by: "item_lookup" | "label_read" | "web_lookup" | "llm" }
 - Content: not used (sometimes notes)
 - Parent: not used
 - Title: food description as logged
@@ -179,7 +181,7 @@ Each section follows the same shape:
 
 ### x_draft
 
-- Status: draft / approved (and any other lifecycle values used by x-draft-cloud)
+- Status: draft / approved / posted
 - Metadata: { source_commits, source_memo_count, source_design_doc, source_pr_url, generated_at, image_url, post_type: "progress|technical|problem-solution|reflection", hashtags, reply_link, reply_link_label, project }
 - Content: draft post text
 - Parent: not used
