@@ -40,6 +40,13 @@ Use this date to compute `<monday>` (start of current week) and `<next-monday>` 
    - Entries added last week: `uv run alt-db entry list --since 7d`
    - Stale goals (no update in 30+ days): `uv run alt-db entry list --type goal --status active --since 30d` (check for goals NOT in results — those are stale)
 
+6. **Tasks (Active and Backlog):**
+   ```bash
+   uv run alt-db --json entry list --type task --status active
+   uv run alt-db --json entry list --type task --status backlog
+   ```
+   Sort active by priority (P0→P3, then unprioritized) then `metadata.due_date`. Sort backlog by created_at (oldest first — they have been waiting longest).
+
 ### Phase 2: Present Week Overview
 
 ```
@@ -54,6 +61,16 @@ Use this date to compute `<monday>` (start of current week) and `<next-monday>` 
 ### Development Priorities
 - [ ] Issue #123: ...
 - [ ] Issue #456: ...
+
+### Tasks (Active)
+- [P1] Title (due 2026-04-28)
+  - Sub-task: Title
+- [P2] Title
+- ...
+
+### Backlog Review
+- Title (added 2026-04-15)
+- ...
 
 ### Routines Due This Week
 - Mon: Wash sheets, Clean toilet
@@ -76,6 +93,8 @@ Discuss with the user:
 - Any deadlines or commitments
 - Routine batching strategy (which day for which routines)
 - Blockers or concerns
+- Promote Discord memos from the past week to tasks: for each candidate memo, check existing active/backlog tasks (collected in Phase 1 step 6), surface duplicates, and on approval register via `uv run alt-db entry add --type task --title "<title>" --status <active|backlog> --metadata '{"priority":"...","due_date":"..."}'`.
+- Review backlog: for each backlog task, ask whether to promote to `active` for the upcoming week, keep in `backlog`, or mark `cancelled` (`uv run alt-db entry update <id> --status active|cancelled`).
 
 ### Phase 4: Output
 
