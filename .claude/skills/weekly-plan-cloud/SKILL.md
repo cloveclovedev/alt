@@ -74,6 +74,13 @@ Run these in parallel:
    ```
    Check for stale goals: active goals NOT updated in 30+ days (those not appearing in `--since 30d` results).
 
+6. **Tasks (Active and Backlog):**
+   ```bash
+   uv run alt-db --json entry list --type task --status active
+   uv run alt-db --json entry list --type task --status backlog
+   ```
+   Sort active by priority (P0→P3, then unprioritized) then `metadata.due_date`. Sort backlog by created_at (oldest first).
+
 ### Phase 3: Plan Generation
 
 Generate a weekly plan autonomously using the collected data. Use this output format:
@@ -91,6 +98,14 @@ Generate a weekly plan autonomously using the collected data. Use this output fo
 ### Development Priorities
 - [ ] repo#123: Issue title [P1]
 - [ ] repo#456: Issue title [P2]
+
+### Tasks (Active)
+- [P1] Title (due 2026-04-28)
+- ...
+
+### Backlog Review
+- Title (added 2026-04-15)
+- ...
 
 ### Routines Due This Week
 - Mon: Clean toilet, Change toothbrush
@@ -111,6 +126,8 @@ Prioritization logic (autonomous, no user input):
 - Distribute routines across available days based on `available_days` field
 - Flag stale goals for attention
 - Suggest top 3 goals for the week based on priority and deadlines
+
+The cloud variant does NOT register new tasks and does NOT change backlog statuses. If any past-week Discord memo is clearly actionable, include it under a `## Possible Task Candidates` section so the user can register it on the next interactive weekly-plan run. Backlog tasks are listed as-is for visibility; the user will promote/cancel them interactively next week.
 
 ### Phase 4: Save and Post
 
