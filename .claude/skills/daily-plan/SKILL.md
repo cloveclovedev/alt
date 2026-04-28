@@ -44,11 +44,12 @@ Run these commands in parallel to collect today's context:
    - Recent memos (last 7 days): `uv run alt-db entry list --since 7d`
    - Goals with approaching deadlines: `uv run alt-db entry list --type goal --due-within 7d`
 
-6. **Tasks (Active):**
+6. **Tasks (Active and Backlog):**
    ```bash
    uv run alt-db --json entry list --type task --status active
+   uv run alt-db --json entry list --type task --status backlog
    ```
-   These are personal tasks tracked in the entries table (separate from GitHub issues). Sort by priority (P0→P3, then unprioritized) then by `metadata.due_date` (earliest first, no-due last).
+   These are personal tasks tracked in the entries table (separate from GitHub issues). Sort active by priority (P0→P3, then unprioritized) then by `metadata.due_date` (earliest first, no-due last). Backlog is used for duplicate detection during the Phase 3 promotion flow.
 
 ### Phase 2: Present Summary
 
