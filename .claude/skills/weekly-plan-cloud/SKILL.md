@@ -127,7 +127,7 @@ Prioritization logic (autonomous, no user input):
 - Flag stale goals for attention
 - Suggest top 3 goals for the week based on priority and deadlines
 
-The cloud variant does NOT register new tasks and does NOT change backlog statuses. If any past-week Discord memo is clearly actionable, include it under a `## Possible Task Candidates` section so the user can register it on the next interactive weekly-plan run. Backlog tasks are listed as-is for visibility; the user will promote/cancel them interactively next week.
+The cloud variant does NOT register new tasks and does NOT change backlog statuses. If any past-week Discord memo is clearly actionable, include it under a `### Possible Task Candidates` section so the user can register it on the next interactive weekly-plan run. Backlog tasks are listed as-is for visibility; the user will promote/cancel them interactively next week.
 
 ### Phase 4: Save and Post
 
