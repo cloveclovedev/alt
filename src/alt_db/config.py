@@ -1,6 +1,7 @@
 """Config CRUD operations."""
 
 import json
+import yaml
 from typing import Any
 
 from .connection import NeonHTTP
@@ -88,3 +89,60 @@ def _row_to_dict_with_meta(row) -> dict:
         "created_at": str(row[3]),
         "updated_at": str(row[4]),
     }
+
+
+def load_yaml_defaults(path: str) -> dict[str, dict]:
+    """Load and validate the YAML param catalog. Returns {key: meta_dict}."""
+    with open(path) as f:
+        raw = yaml.safe_load(f) or {}
+    params = raw.get("params", {})
+    if not isinstance(params, dict):
+        raise ValueError(f"{path}: params must be a mapping (got {type(params).__name__})")
+    out: dict[str, dict] = {}
+    for key, meta in params.items():
+        if not isinstance(meta, dict):
+            raise ValueError(f"{path}: {key}: param entry must be a mapping")
+        if "type" not in meta:
+            raise ValueError(f"{path}: {key}: missing required field 'type'")
+        if meta["type"] not in ("string", "number", "boolean", "array", "object"):
+            raise ValueError(f"{path}: {key}: invalid type '{meta['type']}'")
+        out[key] = meta
+    return out
+
+
+def seed(db: NeonHTTP, yaml_path: str, force: bool = False) -> dict[str, int]:
+    """Idempotently apply a YAML param catalog to the config table.
+
+    - Missing keys are inserted with value = meta.default (or NULL) and the
+      full meta as metadata.
+    - Existing keys are skipped unless force=True; with force, only the
+      metadata is overwritten (the value is preserved).
+    - Keys present in DB but absent from YAML are never touched.
+
+    Returns a counts dict: {"inserted": int, "updated": int, "skipped": int}.
+    """
+    catalog = load_yaml_defaults(yaml_path)
+    counts = {"inserted": 0, "updated": 0, "skipped": 0}
+    for key, meta in catalog.items():
+        existing = db.execute(
+            "SELECT 1 FROM config WHERE key = $1",
+            [key],
+        )
+        if existing.row_count == 0:
+            default_value = meta.get("default", None)
+            db.execute(
+                """INSERT INTO config (key, value, metadata)
+                   VALUES ($1, $2::jsonb, $3::jsonb)""",
+                [key, json.dumps(default_value), json.dumps(meta)],
+            )
+            counts["inserted"] += 1
+        elif force:
+            db.execute(
+                """UPDATE config SET metadata = $2::jsonb, updated_at = now()
+                   WHERE key = $1""",
+                [key, json.dumps(meta)],
+            )
+            counts["updated"] += 1
+        else:
+            counts["skipped"] += 1
+    return counts
