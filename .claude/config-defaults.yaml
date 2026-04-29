@@ -1,0 +1,53 @@
+# .claude/config-defaults.yaml
+#
+# OSS-shipped catalog of config params consumed by the official skill set.
+# This is the seed used by `alt-db config seed`. After seeding, the database
+# is the runtime truth; this file is not read again unless you re-seed.
+#
+# Personal additions (custom keys, edited descriptions) live in the database
+# only and are not reflected here.
+#
+# Required fields per param: type.
+# Optional: description, consumed_by, default.
+# Allowed types: string | number | boolean | array | object.
+
+params:
+  plan.discord.channel_id:
+    type: string
+    description: |
+      Discord channel ID where daily and weekly plans are posted.
+    consumed_by: [daily-plan, daily-plan-cloud, weekly-plan, weekly-plan-cloud]
+
+  plan.github.repos:
+    type: array
+    description: |
+      List of GitHub repositories (owner/name) scanned for issues during
+      daily and weekly planning.
+    consumed_by: [daily-plan, daily-plan-cloud, weekly-plan, weekly-plan-cloud]
+
+  plan.google_calendar.context:
+    type: string
+    description: |
+      Free-form text explaining how to interpret each calendar
+      (for example: "Work calendar = main job hours, mkuri = personal").
+      Read by daily-plan / weekly-plan when summarising the schedule.
+    consumed_by: [daily-plan, daily-plan-cloud, weekly-plan, weekly-plan-cloud]
+
+  daily_plan.cloud.enabled:
+    type: boolean
+    description: |
+      When true, daily-plan-cloud runs as a fallback if you have not
+      already posted a daily plan by daily_plan.cloud.fallback_time.
+      Set to false to disable the cloud fallback entirely.
+    consumed_by: [daily-plan-cloud, cloud-scheduler]
+    default: true
+
+  daily_plan.cloud.fallback_time:
+    type: string
+    description: |
+      JST time (HH:MM) at which daily-plan-cloud auto-posts when no daily
+      plan has been posted yet. Cloud-scheduler dispatches based on the
+      hour part. Phase 1: changing this requires the unified trigger cron
+      to already fire on the new hour (cron reconciliation is a follow-up).
+    consumed_by: [daily-plan-cloud, cloud-scheduler]
+    default: "10:23"
