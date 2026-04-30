@@ -49,6 +49,25 @@ For each skill in the matched row:
 2. Follow the loaded skill's instructions completely through all phases
 3. If the skill encounters an error, note the failure and proceed to the next skill in the row
 
+### Phase 2.5: Per-skill gates
+
+Some skills now read their own enable/time configuration from the `config`
+table. Apply these gates *before* invoking the relevant skill, regardless of
+the dispatch table:
+
+**daily-plan-cloud** — read both keys:
+```bash
+uv run alt-db config get daily_plan.cloud.enabled
+uv run alt-db config get daily_plan.cloud.fallback_time
+```
+
+If `daily_plan.cloud.enabled` is `false`, skip daily-plan-cloud.
+If the hour part of `daily_plan.cloud.fallback_time` (e.g. `10` from `"10:23"`)
+does not match `<hour>` from Phase 1, skip daily-plan-cloud.
+
+(All other skills retain their existing dispatch-table behaviour for now.
+Per-skill gates for them will be added in subsequent issues.)
+
 ### Phase 3: Summary
 
 After all dispatched skills have completed, output a brief summary:
