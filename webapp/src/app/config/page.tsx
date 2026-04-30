@@ -16,6 +16,18 @@ export default async function ConfigPage(props: {
   const all = await listConfigsWithMeta()
   const tabs = computeTabs(all)
   const active = sp.tab && tabs.includes(sp.tab) ? sp.tab : tabs[0]
+
+  if (!active) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Config</h1>
+        <p className="text-muted-foreground">
+          No config rows found. Run <code>uv run alt-db config seed</code> to bootstrap.
+        </p>
+      </div>
+    )
+  }
+
   const rows = filterByTab(all, active)
 
   return (
