@@ -1,5 +1,7 @@
 """Tests for config operations."""
 
+import json
+
 from alt_db import config
 
 
@@ -128,3 +130,43 @@ def test_delete_existing_returns_true(config_db):
 def test_delete_missing_returns_false(config_db):
     client, _ = config_db
     assert config.delete(client, "test.delete.never_existed") is False
+
+
+def test_set_meta_creates_row_when_key_absent(config_db):
+    client, keys = config_db
+    keys.append("test.config.meta_only")
+    config.set_meta(client, "test.config.meta_only", {"type": "string", "description": "x"})
+    rows = client.execute(
+        "SELECT value::text, metadata::text FROM config WHERE key = $1",
+        ["test.config.meta_only"],
+    ).rows
+    assert len(rows) == 1
+    assert rows[0][0] == "null"  # value defaults to JSON null
+    assert json.loads(rows[0][1]) == {"type": "string", "description": "x"}
+
+
+def test_set_meta_updates_existing_row_metadata_only(config_db):
+    client, keys = config_db
+    keys.append("test.config.meta_update")
+    config.set(client, "test.config.meta_update", "real-value")
+    config.set_meta(client, "test.config.meta_update", {"type": "string", "description": "y"})
+    assert config.get(client, "test.config.meta_update") == "real-value"
+    meta_row = client.execute(
+        "SELECT metadata::text FROM config WHERE key = $1",
+        ["test.config.meta_update"],
+    ).rows[0]
+    assert json.loads(meta_row[0]) == {"type": "string", "description": "y"}
+
+
+def test_list_with_meta_returns_metadata(config_db):
+    client, keys = config_db
+    keys.extend(["test.lwm.a", "test.lwm.b"])
+    config.set(client, "test.lwm.a", 1)
+    config.set_meta(client, "test.lwm.a", {"type": "number"})
+    config.set(client, "test.lwm.b", "v")
+    results = config.list_with_meta(client, prefix="test.lwm.")
+    found = {r["key"]: r for r in results}
+    assert found["test.lwm.a"]["value"] == 1
+    assert found["test.lwm.a"]["metadata"] == {"type": "number"}
+    assert found["test.lwm.b"]["value"] == "v"
+    assert found["test.lwm.b"]["metadata"] == {}

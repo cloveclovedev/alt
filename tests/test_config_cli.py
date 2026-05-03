@@ -47,3 +47,39 @@ def test_config_delete_args():
     args = parser.parse_args(["config", "delete", "x.product_links.old"])
     assert args.action == "delete"
     assert args.key == "x.product_links.old"
+
+
+def test_config_set_meta_args():
+    parser = build_parser()
+    args = parser.parse_args(["config", "set-meta", "plan.discord.channel_id", '{"type":"string"}'])
+    assert args.action == "set-meta"
+    assert args.key == "plan.discord.channel_id"
+    assert args.metadata == '{"type":"string"}'
+
+
+def test_config_list_with_meta_flag():
+    parser = build_parser()
+    args = parser.parse_args(["config", "list", "--with-meta"])
+    assert args.action == "list"
+    assert args.with_meta is True
+
+
+def test_config_list_with_meta_default_false():
+    parser = build_parser()
+    args = parser.parse_args(["config", "list"])
+    assert args.with_meta is False
+
+
+def test_config_seed_default_path():
+    parser = build_parser()
+    args = parser.parse_args(["config", "seed"])
+    assert args.action == "seed"
+    assert args.force is False
+    assert args.file is None  # uses default path resolution
+
+
+def test_config_seed_with_force_and_file():
+    parser = build_parser()
+    args = parser.parse_args(["config", "seed", "--force", "--file", "custom.yaml"])
+    assert args.force is True
+    assert args.file == "custom.yaml"

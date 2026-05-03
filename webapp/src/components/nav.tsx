@@ -26,6 +26,9 @@ export async function Nav() {
           <Link href="/posts" className="text-sm text-muted-foreground hover:text-foreground">
             Posts
           </Link>
+          <Link href="/config" className="text-sm text-muted-foreground hover:text-foreground">
+            Config
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{session.user.name}</span>

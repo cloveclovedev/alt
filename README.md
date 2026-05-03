@@ -112,8 +112,36 @@ Benefits for forkers:
 
 ## Configuration
 
-- `config` table (Postgres) — App settings (Discord channels, GitHub repos, schedule preferences). Manage via `uv run alt-db config`.
-- `.env` — Credentials (database, Discord bot token). See `.env.example`.
+Configuration values live in a Postgres `config` table. Each row carries a
+`key`, a JSON `value`, and a `metadata` jsonb describing the param's
+type / description / consumed_by skills / default. Manage values via:
+
+- `uv run alt-db config get <key>` / `set <key> <json>` / `list [--with-meta]`
+- the webapp `/config` page (Phase 1 surfaces daily-plan params; more
+  skills land in subsequent phases)
+
+Credentials (DB URL, Discord token, etc.) live in `.env`, see `.env.example`.
+
+### How params are defined
+
+The repo ships `.claude/config-defaults.yaml`, a catalog of the params
+the official skill set expects. It is **not the runtime source of truth**:
+
+```bash
+uv run alt-db config seed         # insert YAML keys missing from the DB
+uv run alt-db config seed --force # also overwrite metadata of existing keys
+                                  # (value is preserved either way)
+```
+
+After seeding, the database is authoritative. Personal customisation —
+adding private keys, editing descriptions, overriding values — flows
+through the same write paths the seed CLI uses (the webapp, the
+`alt-db config` CLI, or a Claude Code conversation), and never requires
+forking the YAML. Re-running `seed` will not touch keys that exist in the
+DB but are absent from the YAML, so personal additions are safe.
+
+The design rationale lives in
+`docs/superpowers/specs/2026-04-29-config-webapp-daily-plan-design.md`.
 
 ## Development
 
