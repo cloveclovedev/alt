@@ -159,3 +159,17 @@ def test_list_entries_due_within_matches_task_due_date(db):
     entry_ids.append(entry_id)
     results = list_entries(client, due_within_days=7)
     assert any(r["id"] == entry_id for r in results)
+
+
+def test_list_entries_due_within_excludes_far_future_task(db):
+    client, entry_ids = db
+    far = (_dt.date.today() + _dt.timedelta(days=30)).isoformat()
+    entry_id = add_entry(
+        client,
+        type="task",
+        title="Test: Task due in 30d",
+        metadata={"due_date": far},
+    )
+    entry_ids.append(entry_id)
+    results = list_entries(client, due_within_days=7)
+    assert all(r["id"] != entry_id for r in results)
