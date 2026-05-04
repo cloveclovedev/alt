@@ -5,6 +5,7 @@ import json
 from .connection import NeonHTTP
 
 _COLUMNS = "id, type, title, content, status, metadata, parent_id, created_at, updated_at"
+_DEADLINE_EXPR = "COALESCE(metadata->>'due_date', metadata->>'target_date')"
 
 
 def _next_param(params: list, value) -> str:
@@ -63,8 +64,11 @@ def list_entries(
     if since_days is not None:
         conditions.append(f"created_at >= now() - make_interval(days => {_next_param(params, since_days)})")
     if due_within_days is not None:
-        conditions.append(f"(metadata->>'target_date')::date <= (current_date + make_interval(days => {_next_param(params, due_within_days)}))")
-        conditions.append("(metadata->>'target_date') IS NOT NULL")
+        conditions.append(
+            f"({_DEADLINE_EXPR})::date <= "
+            f"(current_date + make_interval(days => {_next_param(params, due_within_days)}))"
+        )
+        conditions.append(f"{_DEADLINE_EXPR} IS NOT NULL")
 
     where = " AND ".join(conditions) if conditions else "TRUE"
     result = db.execute(
