@@ -145,3 +145,17 @@ def test_list_entries_due_within_matches_goal_target_date(db):
     entry_ids.append(entry_id)
     results = list_entries(client, due_within_days=7)
     assert any(r["id"] == entry_id for r in results)
+
+
+def test_list_entries_due_within_matches_task_due_date(db):
+    client, entry_ids = db
+    due = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
+    entry_id = add_entry(
+        client,
+        type="task",
+        title="Test: Task due in 3d",
+        metadata={"due_date": due},
+    )
+    entry_ids.append(entry_id)
+    results = list_entries(client, due_within_days=7)
+    assert any(r["id"] == entry_id for r in results)
