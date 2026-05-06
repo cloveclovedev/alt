@@ -42,3 +42,11 @@ def test_cli_compute_empty_rows_exits_nonzero():
 def test_cli_compute_malformed_json_exits_nonzero():
     result = _run("not-json", "compute", "--cron-minute", "23")
     assert result.returncode != 0
+
+
+def test_cli_compute_non_list_stdin_exits_nonzero():
+    # Valid JSON but not a list (e.g., an object) — should be rejected by the
+    # CLI's input-shape guard, not by compute_target.
+    result = _run("{}", "compute", "--cron-minute", "23")
+    assert result.returncode != 0
+    assert "must be a list" in result.stderr
