@@ -15,6 +15,13 @@ export function ConfigForm({ rows }: ConfigFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
+  const cronMinute = (() => {
+    const row = rows.find((r) => r.key === "cloud_scheduler.cron_minute")
+    if (!row) return null
+    const v = row.value
+    return typeof v === "number" ? v : null
+  })()
+
   return (
     <form
       action={(formData: FormData) => {
@@ -50,6 +57,7 @@ export function ConfigForm({ rows }: ConfigFormProps) {
             name={r.key}
             type={r.metadata.type ?? "string"}
             defaultValue={r.value}
+            cronMinute={cronMinute}
           />
           {errors[r.key] && (
             <p className="text-xs text-destructive">{errors[r.key]}</p>
