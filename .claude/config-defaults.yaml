@@ -37,7 +37,7 @@ params:
     type: boolean
     description: |
       When true, daily-plan-cloud runs as a fallback if you have not
-      already posted a daily plan by daily_plan.cloud.fallback_time.
+      already posted a daily plan by daily_plan.cloud.fallback_hour.
       Set to false to disable the cloud fallback entirely.
     consumed_by: [daily-plan-cloud, cloud-scheduler]
     default: true
