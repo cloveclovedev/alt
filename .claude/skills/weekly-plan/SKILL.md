@@ -115,3 +115,19 @@ uv run alt-db entry add --type weekly_plan --status posted \
   --title "Weekly Plan <monday YYYY-MM-DD>" \
   --content "<plan_text>"
 ```
+
+### Phase 5: Reconcile cloud-scheduler cron (gated)
+
+Read the gate:
+```bash
+uv run alt-db config get weekly_plan.reconcile_cron
+```
+
+If the value is `false`, skip this phase.
+
+Otherwise invoke the `/reconcile-cron` skill via the Skill tool. The user
+will be present and can confirm the diff if any change is needed.
+
+If `/reconcile-cron` fails, do **not** abort the weekly plan. Surface the
+failure as a one-line warning in the closing summary so the user can
+investigate later.
