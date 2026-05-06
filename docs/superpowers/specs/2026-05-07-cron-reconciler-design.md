@@ -268,10 +268,14 @@ no-change case has already been handled at the end of Phase 2b.)
 On approval, the skill invokes the `/schedule` skill via the `Skill` tool
 with a natural-language instruction:
 
-> Use the /schedule skill to update the alt cloud-scheduler routine to fire
-> on the cron expression `23 10 * * *`. The routine's prompt should remain
-> the existing one that invokes the `cloud-scheduler` skill. If a matching
-> routine doesn't exist, create one with that prompt and cron.
+> Use the /schedule skill to update the alt cloud-scheduler routine's cron
+> expression to `23 10 * * *`. Keep its existing prompt unchanged.
+
+The reconciler is update-only. If Phase 2 reported "not found", the
+reconciler exits with a message instructing the user to bootstrap the
+routine via `/schedule` once first; reconciler does not handle the
+create-from-scratch case because that requires choosing the routine's
+prompt, which is an editorial decision outside this skill's scope.
 
 The reconciler does not read or modify `/schedule`'s implementation. It only
 relies on the natural-language interface.
@@ -338,6 +342,9 @@ the routine.
 - **`/schedule` reports failure (or it cannot be invoked)** — surface the
   failure verbatim; exit non-zero. `/weekly-plan` continues but shows the
   failure in its summary.
+- **Routine not found at Phase 2** — reconciler exits with a message asking
+  the user to bootstrap the routine once via `/schedule` (passing a prompt
+  that invokes `cloud-scheduler`). No further action.
 - **User cancels at Phase 3** — exit cleanly, no mutation.
 - **Concurrent edits** — last-write-wins. Two reconciler runs in quick
   succession would both confirm and apply; the second one is just a no-op
