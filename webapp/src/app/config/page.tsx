@@ -3,7 +3,7 @@ import type { ConfigRow } from "@/lib/config"
 import { ConfigForm } from "@/components/config/config-form"
 import { TabsNav } from "@/components/config/tabs-nav"
 
-const PHASE_1_SKILLS = ["daily-plan"] as const
+const PHASE_1_SKILLS = ["daily-plan", "cloud-scheduler"] as const
 
 interface SearchParams {
   tab?: string
