@@ -56,6 +56,9 @@ export function castValueByType(raw: unknown, type: string): unknown {
     case "string":
       return String(raw)
     case "number": {
+      if (typeof raw === "string" && raw.trim() === "") {
+        throw new Error("Empty number")
+      }
       const n = Number(raw)
       if (!Number.isFinite(n)) throw new Error(`Invalid number: ${raw}`)
       return n
