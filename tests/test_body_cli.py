@@ -44,7 +44,8 @@ def test_run_import_parses_and_enriches(db):
 
     # Track inserted entry for cleanup
     result = client.execute(
-        "SELECT id FROM entries WHERE type = 'body_measurement' AND metadata->>'measured_at' = $1",
+        "SELECT id FROM entries WHERE type = 'body_measurement' "
+        "AND (metadata->>'measured_at')::timestamptz = $1::timestamptz",
         ["2099-01-01T12:00:00+09:00"],
     )
     for row in result.rows:
