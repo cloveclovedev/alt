@@ -15,6 +15,11 @@ describe("castValueByType", () => {
     expect(() => castValueByType("not-a-number", "number")).toThrow()
   })
 
+  it("throws on empty string for number", () => {
+    expect(() => castValueByType("", "number")).toThrow("Empty number")
+    expect(() => castValueByType("   ", "number")).toThrow("Empty number")
+  })
+
   it("returns true/false for type=boolean", () => {
     expect(castValueByType("true", "boolean")).toBe(true)
     expect(castValueByType("false", "boolean")).toBe(false)

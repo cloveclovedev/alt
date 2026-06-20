@@ -58,12 +58,12 @@ the dispatch table:
 **daily-plan-cloud** — read both keys:
 ```bash
 uv run alt-db config get daily_plan.cloud.enabled
-uv run alt-db config get daily_plan.cloud.fallback_time
+uv run alt-db config get daily_plan.cloud.fallback_hour
 ```
 
 If `daily_plan.cloud.enabled` is `false`, skip daily-plan-cloud.
-If the hour part of `daily_plan.cloud.fallback_time` (e.g. `10` from `"10:23"`)
-does not match `<hour>` from Phase 1, skip daily-plan-cloud.
+If `daily_plan.cloud.fallback_hour` (integer 0-23) does not equal `<hour>`
+from Phase 1, skip daily-plan-cloud.
 
 (All other skills retain their existing dispatch-table behaviour for now.
 Per-skill gates for them will be added in subsequent issues.)

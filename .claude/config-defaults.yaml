@@ -37,17 +37,33 @@ params:
     type: boolean
     description: |
       When true, daily-plan-cloud runs as a fallback if you have not
-      already posted a daily plan by daily_plan.cloud.fallback_time.
+      already posted a daily plan by daily_plan.cloud.fallback_hour.
       Set to false to disable the cloud fallback entirely.
     consumed_by: [daily-plan-cloud, cloud-scheduler]
     default: true
 
-  daily_plan.cloud.fallback_time:
-    type: string
+  daily_plan.cloud.fallback_hour:
+    type: number
     description: |
-      JST time (HH:MM) at which daily-plan-cloud auto-posts when no daily
-      plan has been posted yet. Cloud-scheduler dispatches based on the
-      hour part. Phase 1: changing this requires the unified trigger cron
-      to already fire on the new hour (cron reconciliation is a follow-up).
-    consumed_by: [daily-plan-cloud, cloud-scheduler]
-    default: "10:23"
+      JST hour (0-23) at which daily-plan-cloud auto-posts when no daily
+      plan has been posted yet. The minute portion is shared across all
+      cloud skills via cloud_scheduler.cron_minute.
+    consumed_by: [daily-plan-cloud, cloud-scheduler, reconcile-cron]
+    default: 10
+
+  cloud_scheduler.cron_minute:
+    type: number
+    description: |
+      Minute slot (0-59) used by the unified cloud-scheduler routine's
+      cron expression. All cloud skills' fire times share this minute;
+      individual skills carry only the hour(s) they need.
+    consumed_by: [cloud-scheduler, reconcile-cron]
+    default: 23
+
+  weekly_plan.reconcile_cron:
+    type: boolean
+    description: |
+      When true, /weekly-plan invokes /reconcile-cron at the end of the
+      session. Set to false to skip the auto-reconcile step.
+    consumed_by: [weekly-plan]
+    default: true
