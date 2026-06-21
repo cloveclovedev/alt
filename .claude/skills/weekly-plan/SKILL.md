@@ -47,6 +47,9 @@ Use this date to compute `<monday>` (start of current week) and `<next-monday>` 
    ```
    Sort active by priority (P0→P3, then unprioritized) then `metadata.due_date`. Sort backlog by created_at (oldest first — they have been waiting longest).
 
+7. **Training:**
+   Run the `training` skill `review` mode to get this week's adherence (workouts by place vs `config.training.weekly_base`, per-day hit/miss) and key-lift / KPI progression.
+
 ### Phase 2: Present Week Overview
 
 ```
@@ -76,6 +79,12 @@ Use this date to compute `<monday>` (start of current week) and `<next-monday>` 
 - Mon: Wash sheets, Clean toilet
 - Wed: ...
 - Sat: ...
+
+### Training Review
+- Adherence: Personal n/1 · 24h gym n/2 · base met/not met
+- Per-day: Mon hit/miss, Tue ..., ...
+- Progression: deadlift 60→62.5kg; vertical jump latest vs prev
+- Next week's menu by day (from config.training, reconciled with the calendar)
 
 ### Goals Overview
 - Active goals with current status
