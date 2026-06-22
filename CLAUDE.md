@@ -13,6 +13,7 @@ Personal planning and knowledge hub powered by Claude Code skills.
 - `/daily-plan` — Run daily planning workflow
 - `/weekly-plan` — Run weekly planning workflow
 - `/routines` — Check and manage routines
+- `/training` — Log workouts, see today's workout, review weekly training
 
 ## External Tools
 
@@ -24,3 +25,4 @@ Personal planning and knowledge hub powered by Claude Code skills.
 
 Manage Discord channel IDs, GitHub repos, calendar settings via `uv run alt-db config set/get`.
 Routine definitions are managed via `uv run alt-db config get/set routines` (single JSON object keyed by routine title).
+Training master plan (places, weekday menus, irregularity rules) and settings are managed via `uv run alt-db config get/set training`. Workouts are logged via the training Discord channel and stored as `workout_log` entries.

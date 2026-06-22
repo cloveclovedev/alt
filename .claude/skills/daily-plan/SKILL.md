@@ -51,6 +51,9 @@ Run these commands in parallel to collect today's context:
    ```
    These are personal tasks tracked in the entries table (separate from GitHub issues). Sort active by priority (P0→P3, then unprioritized) then by `metadata.due_date` (earliest first, no-due last). Backlog is used for duplicate detection during the Phase 3 promotion flow.
 
+7. **Training:**
+   Run the `training` skill logic — first `parse` (ingest new workout posts from the training channel into `workout_log`), then `today` (today's planned workout, the week-so-far adherence counter, and last numbers for today's key lifts). If `config.training.discord.channel_id` is empty, skip parse and still show today's planned workout from `config.training.plan`.
+
 ### Phase 2: Present Summary
 
 Present all gathered information organized as:
@@ -70,6 +73,11 @@ Select up to 5 recommended issues based on priority (P0/P1 first), milestone urg
   - Sub-task: Title
 - [P2] Title
 - ...
+
+## Training
+- Today's workout: [place] — [menu] (or "rest day")
+- This week so far: Personal n/1, 24h gym n/2
+- Last numbers: [key lift]: [weight]kg [reps]x[sets]
 
 ## Routines Due
 - Overdue: ...
@@ -118,12 +126,14 @@ Based on the Phase 3 discussion outcome, generate a concise channel summary:
 📅 Notable calendar event HH:MM
 ✅ Routine item
 📌 Task title — due today (P1)
+🏋 Today's workout — [place/menu]
 ```
 
 - **🔧** Issues decided to work on today
 - **📅** Calendar events requiring action or attention
 - **✅** Routines to handle today
 - **📌** Notable tasks: status=active AND (due_date<=today OR priority in [P0,P1]). Cap at 2-3 lines; remaining active tasks live in the thread detail.
+- **🏋** Today's planned workout (omit on rest days)
 - One item per line, icon repeated per item
 - Omit categories with no items
 - Blank line between title and items

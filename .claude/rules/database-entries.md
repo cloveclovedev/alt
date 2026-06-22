@@ -13,6 +13,7 @@ Use `uv run alt-db entry` to manage entries in Neon Postgres (the second brain s
 | `tech_interest` | Technologies to explore or evaluate |
 | `business` | Business-related decisions and plans |
 | `routine_event` | Routine completion / baseline records |
+| `workout_log` | Logged training sessions (adherence + performance) |
 | `body_measurement` | Body composition snapshots (e.g., InBody) |
 | `body_measurement_goal` | Body composition target settings |
 | `nutrition_item` | Food items registry (calorie/protein per item) |
@@ -98,6 +99,16 @@ Each section follows the same shape:
 - Title: routine name; must match a key in `config.routines` (the routines skill matches completion records to definitions by title)
 - Lifecycle: created when a routine is performed (`completed`) or when establishing a starting point for a new routine (`baseline`)
 - Consumers: routines skill (overdue/due-soon calculation), daily-plan (overdue routines), weekly-plan (week's routines)
+
+### workout_log
+
+- Status: not used
+- Metadata: { logged_date: "YYYY-MM-DD", place: "personal|gym_24h|home_elevator|floor1|basketball|other", workout_type: "upper|lower|full|hiit|basketball|other", exercises: [{ name: string, weight_kg?: number, reps?: number, sets?: number, value?: number, unit?: string, note?: string }], rpe?: number, note?: string, source_message_ids: string[], estimated_by: "discord_parse" }
+- Content: raw Discord message text (provenance)
+- Parent: not used
+- Title: `Workout YYYY-MM-DD — <place label>`
+- Lifecycle: created by the training skill from posts in the training Discord channel; one entry per workout, with multiple posts for the same logged_date + place merged into one entry; idempotent via metadata.source_message_ids
+- Consumers: training skill (today/review), daily-plan (today's workout), weekly-plan (training review)
 
 ### body_measurement
 
