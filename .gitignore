@@ -6,6 +6,10 @@ data/
 # Environment
 .env
 
+# Local application configuration
+backend/config/alt.toml
+backend/alt
+
 # Python
 __pycache__/
 *.egg-info/

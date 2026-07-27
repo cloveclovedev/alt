@@ -9,6 +9,10 @@ table "config" {
     type = jsonb
     null = false
   }
+  column "metadata" {
+    type    = jsonb
+    default = "{}"
+  }
   column "created_at" {
     type    = timestamptz
     default = sql("now()")

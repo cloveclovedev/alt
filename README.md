@@ -48,6 +48,33 @@ alt turns Claude Code into a personal assistant that:
    /daily-plan
    ```
 
+## Go web application
+
+The `refactor/go-web-app` branch contains the incremental Go replacement for
+the dedicated web experience. It keeps the existing skills, Python tools, and
+legacy tables operational while adding typed daily-planning tables.
+
+Start the local stack:
+
+```bash
+docker compose up --build
+```
+
+Then open <http://127.0.0.1:8080/today>. The initial vertical slice supports:
+
+- PostgreSQL-backed journal capture;
+- active task creation and completion with priority and due date;
+- versioned accepted daily plans;
+- liveness and readiness endpoints.
+
+The local stack binds the web and PostgreSQL ports to loopback. Authentication
+is not part of this first vertical slice, so do not expose it beyond the local
+machine yet.
+
+The Go module lives under `backend/`. See
+[`docs/superpowers/specs/2026-07-27-go-web-app-design.md`](docs/superpowers/specs/2026-07-27-go-web-app-design.md)
+for the migration and deployment strategy.
+
 ## Skills
 
 | Skill | Type | Description |

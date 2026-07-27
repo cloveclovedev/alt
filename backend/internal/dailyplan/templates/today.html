@@ -1,0 +1,142 @@
+{{define "today.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11231d">
+  <title>Today · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/today" aria-label="alt home">alt</a>
+    <p>Daily record and planning</p>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Today</p>
+        <h1>{{date .Date}}</h1>
+        <p class="timezone">{{.Timezone}}</p>
+      </div>
+      <p class="hero-copy">Capture what matters, choose the work, and leave a plan you can trust.</p>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="panel plan-panel" id="plan">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Direction</p>
+            <h2>Daily plan</h2>
+          </div>
+          {{with .Plan}}<span class="revision">Revision {{.Revision}}</span>{{end}}
+        </div>
+
+        {{with .Plan}}
+          <div class="accepted-plan">{{.Summary}}</div>
+        {{else}}
+          <p class="empty">No accepted plan yet. Write a short plan for the day.</p>
+        {{end}}
+
+        <form action="/daily-plans" method="post">
+          <label for="summary">Plan summary</label>
+          <textarea id="summary" name="summary" rows="7" maxlength="20000" required placeholder="What matters today? What can wait?">{{with .Plan}}{{.Summary}}{{end}}</textarea>
+          <button type="submit">Save accepted plan</button>
+        </form>
+      </section>
+
+      <section class="panel" id="journal">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Capture</p>
+            <h2>Journal</h2>
+          </div>
+          <span class="count">{{len .JournalEntries}}</span>
+        </div>
+
+        <form action="/journal-entries" method="post">
+          <label for="body">New note</label>
+          <textarea id="body" name="body" rows="4" maxlength="10000" required placeholder="What happened, or what is on your mind?"></textarea>
+          <button type="submit">Add note</button>
+        </form>
+
+        <ol class="record-list">
+          {{range .JournalEntries}}
+            <li>
+              <div class="record-meta">
+                <span>{{.Kind}}</span>
+                <time datetime="{{.OccurredAt.Format "2006-01-02T15:04:05Z07:00"}}">{{timeOnly .OccurredAt}}</time>
+              </div>
+              <p>{{.Body}}</p>
+            </li>
+          {{else}}
+            <li class="empty">Nothing captured today.</li>
+          {{end}}
+        </ol>
+      </section>
+
+      <section class="panel tasks-panel" id="tasks">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Action</p>
+            <h2>Active tasks</h2>
+          </div>
+          <span class="count">{{len .Tasks}}</span>
+        </div>
+
+        <form class="task-form" action="/tasks" method="post">
+          <div class="wide-field">
+            <label for="title">Task</label>
+            <input id="title" name="title" maxlength="500" required placeholder="A concrete next action">
+          </div>
+          <div>
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority">
+              <option value="">None</option>
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+              <option value="P3">P3</option>
+            </select>
+          </div>
+          <div>
+            <label for="due_date">Due date</label>
+            <input id="due_date" name="due_date" type="date">
+          </div>
+          <div class="wide-field">
+            <label for="notes">Notes</label>
+            <input id="notes" name="notes" placeholder="Optional context">
+          </div>
+          <button type="submit">Add task</button>
+        </form>
+
+        <ol class="task-list">
+          {{range .Tasks}}
+            <li>
+              <div class="task-main">
+                <div class="task-action">
+                  <form action="/tasks/{{.ID}}/complete" method="post">
+                    <button class="complete-button" type="submit" aria-label="Complete {{.Title}}">Done</button>
+                  </form>
+                  <span class="task-title">{{.Title}}</span>
+                </div>
+                <div class="badges">
+                  {{if .Priority}}<span class="badge priority">{{.Priority}}</span>{{end}}
+                  <span class="badge">{{.Status}}</span>
+                  {{with .DueDate}}<time class="badge" datetime="{{dateOnly .}}">Due {{dateOnly .}}</time>{{end}}
+                </div>
+              </div>
+              {{if .Notes}}<p>{{.Notes}}</p>{{end}}
+            </li>
+          {{else}}
+            <li class="empty">No active tasks.</li>
+          {{end}}
+        </ol>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
+{{end}}

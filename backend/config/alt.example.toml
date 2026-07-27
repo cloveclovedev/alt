@@ -1,0 +1,11 @@
+[server]
+port = 8080
+shutdown_timeout = "15s"
+
+[database]
+max_connections = 10
+
+[user]
+id = "00000000-0000-0000-0000-000000000001"
+display_name = "Local user"
+timezone = "Asia/Tokyo"
