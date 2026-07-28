@@ -1,7 +1,5 @@
 -- Create enum type "routine_status"
 CREATE TYPE "public"."routine_status" AS ENUM ('active', 'inactive');
--- Create enum type "routine_event_kind"
-CREATE TYPE "public"."routine_event_kind" AS ENUM ('baseline', 'completed');
 -- Create "routine_categories" table
 CREATE TABLE "public"."routine_categories" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -50,7 +48,6 @@ CREATE INDEX "routines_user_status_idx" ON "public"."routines" ("user_id", "stat
 CREATE TABLE "public"."routine_events" (
   "id" uuid NOT NULL DEFAULT gen_random_uuid(),
   "routine_id" uuid NOT NULL,
-  "kind" "public"."routine_event_kind" NOT NULL,
   "completed_on" date NOT NULL,
   "note" text NOT NULL DEFAULT '',
   "created_at" timestamptz NOT NULL DEFAULT now(),
