@@ -76,6 +76,7 @@ services:
   atlas:
     image: arigaio/atlas:1.2.0
     profiles: ["tools"]
+    working_dir: /db
     volumes:
       - ./db:/db
     depends_on:

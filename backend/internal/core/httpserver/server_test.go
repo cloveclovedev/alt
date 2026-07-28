@@ -11,7 +11,11 @@ func TestSameOriginRejectsCrossOriginPost(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	handler := SameOrigin(next)
-	request := httptest.NewRequest(http.MethodPost, "http://alt.local/tasks", nil)
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"http://alt.local/plans/daily/2026-07-27/revisions",
+		nil,
+	)
 	request.Header.Set("Origin", "https://attacker.example")
 	response := httptest.NewRecorder()
 
@@ -27,7 +31,11 @@ func TestSameOriginAllowsMatchingOrigin(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	handler := SameOrigin(next)
-	request := httptest.NewRequest(http.MethodPost, "https://alt.example/tasks", nil)
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"https://alt.example/plans/daily/2026-07-27/revisions",
+		nil,
+	)
 	request.Header.Set("Origin", "https://alt.example")
 	response := httptest.NewRecorder()
 

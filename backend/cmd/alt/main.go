@@ -16,7 +16,8 @@ import (
 	"github.com/cloveclovedev/alt/internal/core/database"
 	"github.com/cloveclovedev/alt/internal/core/httpserver"
 	"github.com/cloveclovedev/alt/internal/core/logging"
-	"github.com/cloveclovedev/alt/internal/dailyplan"
+	"github.com/cloveclovedev/alt/internal/identity"
+	"github.com/cloveclovedev/alt/internal/planning"
 )
 
 func main() {
@@ -57,9 +58,8 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	if err := database.BootstrapUser(
+	if err := identity.NewStore(pool).BootstrapLocalUser(
 		ctx,
-		pool,
 		cfg.UserID,
 		cfg.UserDisplayName,
 		cfg.UserTimezone,
@@ -67,21 +67,21 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 
-	service, err := dailyplan.NewService(
-		dailyplan.NewStore(pool),
+	service, err := planning.NewService(
+		planning.NewStore(pool),
 		cfg.UserID,
 		cfg.UserTimezone,
 	)
 	if err != nil {
 		return err
 	}
-	dailyHandler, err := dailyplan.NewHandler(service, logger)
+	planningHandler, err := planning.NewHandler(service, logger)
 	if err != nil {
 		return err
 	}
 
 	mux := http.NewServeMux()
-	dailyHandler.Register(mux)
+	planningHandler.Register(mux)
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))

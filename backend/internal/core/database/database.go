@@ -26,19 +26,3 @@ func Connect(ctx context.Context, databaseURL string, maxConnections int32) (*pg
 	}
 	return pool, nil
 }
-
-// BootstrapUser creates the private deployment's configured internal user.
-func BootstrapUser(ctx context.Context, pool *pgxpool.Pool, id, displayName, timezone string) error {
-	_, err := pool.Exec(ctx, `
-		INSERT INTO users (id, display_name, timezone)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (id) DO UPDATE
-		SET display_name = EXCLUDED.display_name,
-		    timezone = EXCLUDED.timezone,
-		    updated_at = now()
-	`, id, displayName, timezone)
-	if err != nil {
-		return fmt.Errorf("bootstrap user: %w", err)
-	}
-	return nil
-}
