@@ -1,0 +1,10 @@
+{{define "categories.html"}}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Routine categories · alt</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><header class="site-header"><a class="brand" href="/" aria-label="alt home">alt</a><p><a href="/routines">Routines</a></p></header><main>
+  <section class="hero compact-hero"><div><p class="eyebrow">Routine management</p><h1>Categories</h1></div></section>
+  <form class="panel inline-form" action="/routine-categories" method="post"><h2>New category</h2><label>Name <input name="name" maxlength="100" required></label><label>Position <input name="position" type="number" min="0" value="0" required></label><label class="checkbox-label"><input name="active" type="checkbox" checked> Active</label><button type="submit">Add category</button></form>
+  <section class="panel routine-history"><h2>Manage categories</h2>{{if .}}{{range .}}<form class="event-form" action="/routine-categories/{{.ID}}" method="post"><label>Name <input name="name" value="{{.Name}}" maxlength="100" required></label><label>Position <input name="position" type="number" min="0" value="{{.Position}}" required></label><label class="checkbox-label"><input name="active" type="checkbox" {{if .Active}}checked{{end}}> Active</label><button type="submit">Save</button><button class="danger" type="submit" formaction="/routine-categories/{{.ID}}/delete" formmethod="post">Delete</button></form>{{end}}{{else}}<p class="empty">No categories yet.</p>{{end}}</section>
+</main></body></html>
+{{end}}

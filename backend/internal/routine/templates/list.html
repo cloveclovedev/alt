@@ -1,0 +1,62 @@
+{{define "list.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11231d">
+  <title>Routines · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Routines</p>
+    <nav class="header-nav"><a href="/routines/new">New routine</a><a href="/routine-categories">Categories</a></nav>
+  </header>
+  <main>
+    <section class="hero compact-hero">
+      <div>
+        <p class="eyebrow">Routine management</p>
+        <h1>Keep the loop moving.</h1>
+        <p class="timezone">Today: {{dateOnly .Today}}</p>
+      </div>
+      <p class="hero-copy">Due dates follow the completion you actually recorded, with the days and months you make available.</p>
+    </section>
+
+    {{range .DueSections}}
+      <section class="panel routine-panel state-{{.State}}">
+        <div class="section-heading"><div><p class="eyebrow">Status</p><h2>{{stateLabel .State}}</h2></div></div>
+        {{if .Categories}}
+          {{range .Categories}}
+            <section class="category-group">
+              <h3>{{.Category.Name}}</h3>
+              <ul class="routine-list">
+                {{range .Routines}}
+                  <li><a href="/routines/{{.ID}}">{{.Name}}</a>{{with .Status.DueOn}}<span>Due {{dateOnly .}}</span>{{end}}{{with .Status.NextAvailableOn}}<span>Next available {{dateOnly .}}</span>{{end}}</li>
+                {{end}}
+              </ul>
+            </section>
+          {{end}}
+        {{else}}
+          <p class="empty">No routines in this section.</p>
+        {{end}}
+      </section>
+    {{end}}
+
+    {{if .IncludeInactive}}
+      <section class="panel routine-panel inactive-panel">
+        <div class="section-heading"><div><p class="eyebrow">Hidden by default</p><h2>Inactive</h2></div><a href="/routines">Hide inactive</a></div>
+        {{if .InactiveSections}}
+          {{range .InactiveSections}}
+            <section class="category-group"><h3>{{.Category.Name}}</h3><ul class="routine-list">{{range .Routines}}<li><a href="/routines/{{.ID}}">{{.Name}}</a></li>{{end}}</ul></section>
+          {{end}}
+        {{else}}<p class="empty">No inactive routines.</p>{{end}}
+      </section>
+    {{else}}
+      <p class="secondary-action"><a href="/routines?inactive=1">Show inactive routines</a></p>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}

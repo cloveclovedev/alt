@@ -65,6 +65,7 @@ func TestHomeRendersCurrentDailyPlan(t *testing.T) {
 	for _, want := range []string{
 		"Daily plan",
 		"Build a useful planning loop.",
+		`href="/routines"`,
 		"&lt;script&gt;alert(1)&lt;/script&gt;",
 	} {
 		if !strings.Contains(body, want) {

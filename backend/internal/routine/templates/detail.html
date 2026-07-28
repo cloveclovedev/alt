@@ -1,0 +1,30 @@
+{{define "detail.html"}}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.Routine.Name}} · alt</title><link rel="stylesheet" href="/static/app.css"></head>
+<body>
+  <header class="site-header"><a class="brand" href="/" aria-label="alt home">alt</a><p><a href="/routines">Routines</a></p></header>
+  <main>
+    <section class="hero compact-hero"><div><p class="eyebrow">{{.Routine.CategoryName}}</p><h1>{{.Routine.Name}}</h1><p class="timezone">{{if eq .Routine.Status "inactive"}}Inactive{{else}}{{stateLabel .Status.State}}{{with .Status.DueOn}} · due {{dateOnly .}}{{end}}{{with .Status.NextAvailableOn}} · next available {{dateOnly .}}{{end}}{{end}}</p></div></section>
+    {{if eq .Routine.Status "active"}}
+    <form class="panel inline-form" action="/routines/{{.Routine.ID}}/complete" method="post"><h2>Record completion</h2><label>Date <input name="completed_on" type="date" max="{{dateOnly .Today}}" value="{{dateOnly .Today}}" required></label><label>Note <input name="note" maxlength="10000"></label><button type="submit">Complete</button></form>
+    {{end}}
+    <section class="panel routine-form"><div class="section-heading"><div><p class="eyebrow">Definition</p><h2>Edit routine</h2></div></div>
+      <form action="/routines/{{.Routine.ID}}" method="post">
+        <label for="name">Name</label><input id="name" name="name" value="{{.Routine.Name}}" maxlength="200" required>
+        <label for="category_id">Category</label><select id="category_id" name="category_id" required>{{range .Categories}}<option value="{{.ID}}" {{if eq .ID $.Routine.CategoryID}}selected{{end}}>{{.Name}}{{if not .Active}} (inactive){{end}}</option>{{end}}</select>
+        <label for="interval_days">Interval in days</label><input id="interval_days" name="interval_days" type="number" min="1" value="{{.Routine.IntervalDays}}" required>
+        <label for="status">Status</label><select id="status" name="status"><option value="active" {{if eq .Routine.Status "active"}}selected{{end}}>Active</option><option value="inactive" {{if eq .Routine.Status "inactive"}}selected{{end}}>Inactive</option></select>
+        <fieldset><legend>Days when this can be done</legend><div class="checkbox-grid">{{range $day := slice 1 2 3 4 5 6 7}}<label><input type="checkbox" name="available_weekdays" value="{{$day}}" {{if hasInt16 $.Routine.AvailableWeekdays $day}}checked{{end}}>{{$day}}</label>{{end}}</div></fieldset>
+        <fieldset><legend>Active months</legend><div class="checkbox-grid">{{range $month := slice 1 2 3 4 5 6 7 8 9 10 11 12}}<label><input type="checkbox" name="active_months" value="{{$month}}" {{if hasInt16 $.Routine.ActiveMonths $month}}checked{{end}}>{{$month}}</label>{{end}}</div></fieldset>
+        <label for="notes">Notes</label><textarea id="notes" name="notes" maxlength="20000" rows="5">{{.Routine.Notes}}</textarea><button type="submit">Save routine</button>
+      </form>
+    </section>
+    <section class="panel routine-history" id="history"><div class="section-heading"><div><p class="eyebrow">History</p><h2>Completion events</h2></div></div>
+      {{if .Events}}{{range .Events}}<form class="event-form" action="/routines/{{$.Routine.ID}}/events/{{.ID}}" method="post"><label>Date <input name="completed_on" type="date" max="{{dateOnly $.Today}}" value="{{dateOnly .CompletedOn}}" required></label><label>Note <input name="note" maxlength="10000" value="{{.Note}}"></label><button type="submit">Correct</button><button class="danger" type="submit" formaction="/routines/{{$.Routine.ID}}/events/{{.ID}}/delete" formmethod="post" onclick="return confirm('Deleting the last event makes this routine immediately overdue. Continue?')">Delete</button></form>{{end}}<p class="field-help">Deleting the last event makes this routine immediately overdue.</p>{{else}}<p class="empty">No history. This routine is immediately overdue.</p>{{end}}
+    </section>
+    {{if not .Events}}<form action="/routines/{{.Routine.ID}}/delete" method="post"><button class="danger" type="submit">Delete routine</button></form>{{else}}<p class="field-help">Routines with history must be deactivated instead of deleted.</p>{{end}}
+  </main>
+</body>
+</html>
+{{end}}

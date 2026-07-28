@@ -18,6 +18,7 @@ import (
 	"github.com/cloveclovedev/alt/internal/core/logging"
 	"github.com/cloveclovedev/alt/internal/identity"
 	"github.com/cloveclovedev/alt/internal/planning"
+	"github.com/cloveclovedev/alt/internal/routine"
 )
 
 func main() {
@@ -79,9 +80,18 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	routineService, err := routine.NewService(routine.NewStore(pool), cfg.UserID, cfg.UserTimezone)
+	if err != nil {
+		return err
+	}
+	routineHandler, err := routine.NewHandler(routineService, logger)
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
 	planningHandler.Register(mux)
+	routineHandler.Register(mux)
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
