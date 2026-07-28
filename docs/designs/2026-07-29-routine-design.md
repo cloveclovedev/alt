@@ -21,7 +21,7 @@ web application and consumed deterministically by daily planning.
 1. Let a user create, edit, activate, deactivate, and inspect routines in the
    web application.
 2. Give each routine stable identity independent of its display name.
-3. Record baseline and completion history.
+3. Record completion history.
 4. Derive one current due date and one of three states: `overdue`, `today`, or
    `upcoming`.
 5. Support interval-based recurrence constrained by available weekdays and
@@ -114,17 +114,11 @@ history because events reference `routines.id`.
 routine_events
 id
 routine_id
-kind
 completed_on
 note
 created_at
 updated_at
 ```
-
-`kind` uses a `routine_event_kind` enum:
-
-- `baseline`: establishes the last-known completion date when tracking begins;
-- `completed`: records that the routine was performed through the application.
 
 `completed_on` is a `date`, not an instant. Recurrence is defined in the user's
 local calendar and does not need time-of-day precision. `created_at` still uses
@@ -143,7 +137,7 @@ deletion.
 Due dates are derived in Go and are not persisted. Persisting them would allow
 schedule changes or corrected history to leave stale due dates behind.
 
-For a routine with a completion or baseline:
+For a routine with an event:
 
 ```text
 base due date = latest completed_on + interval_days
@@ -199,16 +193,16 @@ The creation form requires:
 - last completed date.
 
 The last completed date is required by default. Creating the routine and its
-initial `baseline` event occurs in one transaction.
+initial event occurs in one transaction.
 
 The user may explicitly select "Never completed or unknown." That creates the
-routine without a baseline and makes it immediately overdue.
+routine without an event and makes it immediately overdue.
 
 ## Completion and correction
 
-Completing a routine creates a `completed` event with the user's local date and
-an optional note. The next due date is calculated from that actual completion
-date, not from the previous scheduled due date.
+Completing a routine creates an event with the user's local date and an optional
+note. The next due date is calculated from that actual completion date, not from
+the previous scheduled due date.
 
 The history screen supports correcting the completion date or note and deleting
 an event recorded by mistake. These are explicit correction operations and do
@@ -224,7 +218,7 @@ The routine area includes:
 - a category manager with add, rename, activate/deactivate, and reorder actions;
 - an active-routine list grouped by category and ordered by category position;
 - status sections for `overdue`, `today`, and `upcoming`;
-- a routine form for definition and baseline data;
+- a routine form for definition and initial completion data;
 - a routine detail page with definition, derived status, and event history;
 - completion and correction actions.
 
@@ -257,8 +251,7 @@ calculation.
 - every active month is in `1..12`;
 - names are non-blank after trimming;
 - a routine and category belong to the same user;
-- baseline and completion dates cannot be later than the user's current local
-  date;
+- event dates cannot be later than the user's current local date;
 - category and routine foreign keys are indexed.
 
 The service validates inputs for useful user-facing errors, while PostgreSQL
@@ -277,7 +270,7 @@ constraints protect stored data independently.
 - Inactive routines are absent from planning candidates.
 - Rename preserves event history.
 - Category ownership and delete restrictions.
-- Creation writes the routine and baseline atomically.
+- Creation writes the routine and its initial event atomically.
 
 ## Deferred extensions
 

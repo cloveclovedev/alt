@@ -248,11 +248,11 @@ func (h *Handler) parseRoutineInput(r *http.Request, creating bool) (RoutineInpu
 		input.Status = RoutineStatusInactive
 	}
 	if creating && r.FormValue("never_completed") != "on" {
-		baseline, err := parseDate(r.FormValue("baseline_on"))
+		lastCompleted, err := parseDate(r.FormValue("last_completed_on"))
 		if err != nil {
 			return RoutineInput{}, fmt.Errorf("%w: last completed date is required", ErrInvalidInput)
 		}
-		input.BaselineOn = &baseline
+		input.LastCompletedOn = &lastCompleted
 	}
 	return input, nil
 }

@@ -93,7 +93,7 @@ func (s *Store) LoadRoutine(ctx context.Context, userID, routineID string) (rout
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, routine_id::text, kind::text, completed_on, note, created_at, updated_at
+		SELECT id::text, routine_id::text, completed_on, note, created_at, updated_at
 		FROM routine_events
 		WHERE routine_id = $1
 		ORDER BY completed_on DESC, created_at DESC, id DESC
@@ -105,7 +105,7 @@ func (s *Store) LoadRoutine(ctx context.Context, userID, routineID string) (rout
 	var events []Event
 	for rows.Next() {
 		var event Event
-		if err := rows.Scan(&event.ID, &event.RoutineID, &event.Kind, &event.CompletedOn, &event.Note, &event.CreatedAt, &event.UpdatedAt); err != nil {
+		if err := rows.Scan(&event.ID, &event.RoutineID, &event.CompletedOn, &event.Note, &event.CreatedAt, &event.UpdatedAt); err != nil {
 			return routineRecord{}, nil, fmt.Errorf("scan routine event: %w", err)
 		}
 		events = append(events, event)
@@ -116,7 +116,7 @@ func (s *Store) LoadRoutine(ctx context.Context, userID, routineID string) (rout
 	return record, events, nil
 }
 
-// CreateRoutine creates a definition and optional baseline atomically.
+// CreateRoutine creates a definition and optional initial event atomically.
 func (s *Store) CreateRoutine(ctx context.Context, userID string, input RoutineInput) (string, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -144,12 +144,12 @@ func (s *Store) CreateRoutine(ctx context.Context, userID string, input RoutineI
 		}
 		return "", fmt.Errorf("insert routine: %w", err)
 	}
-	if input.BaselineOn != nil {
+	if input.LastCompletedOn != nil {
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO routine_events (routine_id, kind, completed_on, note)
-			VALUES ($1, 'baseline', $2, '')
-		`, routineID, input.BaselineOn.Format(time.DateOnly)); err != nil {
-			return "", fmt.Errorf("insert routine baseline: %w", err)
+			INSERT INTO routine_events (routine_id, completed_on, note)
+			VALUES ($1, $2, '')
+		`, routineID, input.LastCompletedOn.Format(time.DateOnly)); err != nil {
+			return "", fmt.Errorf("insert initial routine event: %w", err)
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -213,13 +213,13 @@ func (s *Store) DeleteRoutine(ctx context.Context, userID, routineID string) err
 }
 
 // CreateEvent records a user-owned completion event.
-func (s *Store) CreateEvent(ctx context.Context, userID, routineID string, kind EventKind, input CompletionInput) error {
+func (s *Store) CreateEvent(ctx context.Context, userID, routineID string, input CompletionInput) error {
 	result, err := s.pool.Exec(ctx, `
-		INSERT INTO routine_events (routine_id, kind, completed_on, note)
-		SELECT r.id, $3, $4, $5
+		INSERT INTO routine_events (routine_id, completed_on, note)
+		SELECT r.id, $3, $4
 		FROM routines AS r
 		WHERE r.id = $1 AND r.user_id = $2
-	`, routineID, userID, kind, input.CompletedOn.Format(time.DateOnly), input.Note)
+	`, routineID, userID, input.CompletedOn.Format(time.DateOnly), input.Note)
 	if err != nil {
 		return fmt.Errorf("insert routine event: %w", err)
 	}
@@ -229,7 +229,7 @@ func (s *Store) CreateEvent(ctx context.Context, userID, routineID string, kind 
 	return nil
 }
 
-// UpdateEvent corrects a routine event without altering its kind.
+// UpdateEvent corrects a routine event.
 func (s *Store) UpdateEvent(ctx context.Context, userID, routineID, eventID string, input EventInput) error {
 	result, err := s.pool.Exec(ctx, `
 		UPDATE routine_events AS e
@@ -339,7 +339,6 @@ const routineSelect = `
 	       r.updated_at,
 	       e.id::text,
 	       e.routine_id::text,
-	       e.kind::text,
 	       e.completed_on,
 	       e.note,
 	       e.created_at,
@@ -347,7 +346,7 @@ const routineSelect = `
 	FROM routines AS r
 	JOIN routine_categories AS c ON c.id = r.category_id
 	LEFT JOIN LATERAL (
-		SELECT id, routine_id, kind, completed_on, note, created_at, updated_at
+		SELECT id, routine_id, completed_on, note, created_at, updated_at
 		FROM routine_events
 		WHERE routine_id = r.id
 		ORDER BY completed_on DESC, created_at DESC, id DESC
@@ -362,7 +361,6 @@ type rowScanner interface {
 func scanRoutineRecord(row rowScanner) (routineRecord, error) {
 	var record routineRecord
 	var eventID, eventRoutineID *string
-	var eventKind *EventKind
 	var completedOn, eventCreatedAt, eventUpdatedAt *time.Time
 	var eventNote *string
 	err := row.Scan(
@@ -379,7 +377,6 @@ func scanRoutineRecord(row rowScanner) (routineRecord, error) {
 		&record.Routine.UpdatedAt,
 		&eventID,
 		&eventRoutineID,
-		&eventKind,
 		&completedOn,
 		&eventNote,
 		&eventCreatedAt,
@@ -390,7 +387,7 @@ func scanRoutineRecord(row rowScanner) (routineRecord, error) {
 	}
 	if eventID != nil {
 		record.LastEvent = &Event{
-			ID: *eventID, RoutineID: *eventRoutineID, Kind: *eventKind,
+			ID: *eventID, RoutineID: *eventRoutineID,
 			CompletedOn: *completedOn, Note: *eventNote,
 			CreatedAt: *eventCreatedAt, UpdatedAt: *eventUpdatedAt,
 		}

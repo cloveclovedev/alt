@@ -124,7 +124,7 @@ func (s *Service) Detail(ctx context.Context, routineID string) (DetailView, err
 	}, nil
 }
 
-// Create validates and creates a routine and optional baseline in one transaction.
+// Create validates and creates a routine and optional initial event in one transaction.
 func (s *Service) Create(ctx context.Context, input RoutineInput) (string, error) {
 	if err := s.validateRoutineInput(&input); err != nil {
 		return "", err
@@ -134,7 +134,7 @@ func (s *Service) Create(ctx context.Context, input RoutineInput) (string, error
 
 // Update validates and updates a routine definition without changing history.
 func (s *Service) Update(ctx context.Context, routineID string, input RoutineInput) error {
-	input.BaselineOn = nil
+	input.LastCompletedOn = nil
 	if err := s.validateRoutineInput(&input); err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (s *Service) Complete(ctx context.Context, routineID string, input Completi
 	if len([]rune(input.Note)) > 10_000 {
 		return fmt.Errorf("%w: event note is too long", ErrInvalidInput)
 	}
-	return s.store.CreateEvent(ctx, s.userID, strings.TrimSpace(routineID), EventKindCompleted, input)
+	return s.store.CreateEvent(ctx, s.userID, strings.TrimSpace(routineID), input)
 }
 
 // UpdateEvent corrects a historical completion date or note.
@@ -170,7 +170,7 @@ func (s *Service) UpdateEvent(ctx context.Context, routineID, eventID string, in
 	return s.store.UpdateEvent(ctx, s.userID, strings.TrimSpace(routineID), strings.TrimSpace(eventID), input)
 }
 
-// DeleteEvent removes an erroneous completion or baseline event.
+// DeleteEvent removes an erroneous completion event.
 func (s *Service) DeleteEvent(ctx context.Context, routineID, eventID string) error {
 	return s.store.DeleteEvent(ctx, s.userID, strings.TrimSpace(routineID), strings.TrimSpace(eventID))
 }
@@ -230,9 +230,9 @@ func (s *Service) validateRoutineInput(input *RoutineInput) error {
 	if input.ActiveMonths, err = normalizeMembers(input.ActiveMonths, 1, 12); err != nil {
 		return fmt.Errorf("%w: invalid active month", ErrInvalidInput)
 	}
-	if input.BaselineOn != nil {
-		if err := s.validateEventDate(*input.BaselineOn); err != nil {
-			return fmt.Errorf("%w: baseline date", err)
+	if input.LastCompletedOn != nil {
+		if err := s.validateEventDate(*input.LastCompletedOn); err != nil {
+			return fmt.Errorf("%w: last completed date", err)
 		}
 	}
 	return nil

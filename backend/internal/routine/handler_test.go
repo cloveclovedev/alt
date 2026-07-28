@@ -56,7 +56,7 @@ func TestCreateRoutineUsesFormValues(t *testing.T) {
 	handler := testHandler(t, app)
 	values := url.Values{
 		"category_id": {"category-1"}, "name": {"Practice"}, "notes": {"Keep it short"},
-		"interval_days": {"3"}, "available_weekdays": {"7", "1"}, "active_months": {"12", "1"}, "baseline_on": {"2026-07-28"},
+		"interval_days": {"3"}, "available_weekdays": {"7", "1"}, "active_months": {"12", "1"}, "last_completed_on": {"2026-07-28"},
 	}
 	request := httptest.NewRequest(http.MethodPost, "/routines", strings.NewReader(values.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -67,7 +67,7 @@ func TestCreateRoutineUsesFormValues(t *testing.T) {
 	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/routines/routine-1" {
 		t.Fatalf("response = %d %q", response.Code, response.Header().Get("Location"))
 	}
-	if app.created.CategoryID != "category-1" || app.created.Name != "Practice" || app.created.BaselineOn == nil || app.created.BaselineOn.Format(time.DateOnly) != "2026-07-28" {
+	if app.created.CategoryID != "category-1" || app.created.Name != "Practice" || app.created.LastCompletedOn == nil || app.created.LastCompletedOn.Format(time.DateOnly) != "2026-07-28" {
 		t.Fatalf("created = %#v", app.created)
 	}
 }

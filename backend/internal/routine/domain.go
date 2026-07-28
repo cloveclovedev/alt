@@ -11,14 +11,6 @@ const (
 	RoutineStatusInactive RoutineStatus = "inactive"
 )
 
-// EventKind identifies why a routine event exists.
-type EventKind string
-
-const (
-	EventKindBaseline  EventKind = "baseline"
-	EventKindCompleted EventKind = "completed"
-)
-
 // DueState is the derived current state of an active routine.
 type DueState string
 
@@ -51,11 +43,10 @@ type Routine struct {
 	UpdatedAt         time.Time
 }
 
-// Event records a baseline or actual completion on a local calendar date.
+// Event records a completion on a local calendar date.
 type Event struct {
 	ID          string
 	RoutineID   string
-	Kind        EventKind
 	CompletedOn time.Time
 	Note        string
 	CreatedAt   time.Time
@@ -131,7 +122,7 @@ type RoutineInput struct {
 	IntervalDays      int
 	AvailableWeekdays []int16
 	ActiveMonths      []int16
-	BaselineOn        *time.Time
+	LastCompletedOn   *time.Time
 }
 
 // CompletionInput is a transport-neutral completion event mutation.

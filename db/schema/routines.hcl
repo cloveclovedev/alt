@@ -3,11 +3,6 @@ enum "routine_status" {
   values = ["active", "inactive"]
 }
 
-enum "routine_event_kind" {
-  schema = schema.public
-  values = ["baseline", "completed"]
-}
-
 table "routine_categories" {
   schema = schema.public
 
@@ -164,10 +159,6 @@ table "routine_events" {
   }
   column "routine_id" {
     type = uuid
-    null = false
-  }
-  column "kind" {
-    type = enum.routine_event_kind
     null = false
   }
   column "completed_on" {

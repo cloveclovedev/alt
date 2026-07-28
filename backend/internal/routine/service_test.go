@@ -80,21 +80,21 @@ func TestDeriveStatusSkipsInactiveRoutine(t *testing.T) {
 	}
 }
 
-func TestValidateRoutineInputNormalizesSelectionsAndRejectsFutureBaseline(t *testing.T) {
+func TestValidateRoutineInputNormalizesSelectionsAndRejectsFutureLastCompletion(t *testing.T) {
 	service, err := NewService(nil, "user", "UTC")
 	if err != nil {
 		t.Fatal(err)
 	}
 	service.now = func() time.Time { return date(t, time.UTC, "2026-07-28") }
 	future := date(t, time.UTC, "2026-07-29")
-	input := RoutineInput{CategoryID: "category", Name: " Routine ", Status: RoutineStatusActive, IntervalDays: 1, AvailableWeekdays: []int16{7, 1, 7}, ActiveMonths: []int16{12, 1, 12}, BaselineOn: &future}
+	input := RoutineInput{CategoryID: "category", Name: " Routine ", Status: RoutineStatusActive, IntervalDays: 1, AvailableWeekdays: []int16{7, 1, 7}, ActiveMonths: []int16{12, 1, 12}, LastCompletedOn: &future}
 
 	err = service.validateRoutineInput(&input)
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("error = %v, want validation error", err)
 	}
 	future = date(t, time.UTC, "2026-07-28")
-	input.BaselineOn = &future
+	input.LastCompletedOn = &future
 	if err := service.validateRoutineInput(&input); err != nil {
 		t.Fatal(err)
 	}

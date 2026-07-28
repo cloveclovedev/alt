@@ -42,10 +42,10 @@ func TestStoreRoutineFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	baseline := integrationDate(t, "2026-07-20")
+	lastCompleted := integrationDate(t, "2026-07-20")
 	routineID, err := store.CreateRoutine(ctx, userID, RoutineInput{
 		CategoryID: categories[0].ID, Name: "Walk", Notes: "Outside", Status: RoutineStatusActive,
-		IntervalDays: 7, AvailableWeekdays: []int16{1}, BaselineOn: &baseline,
+		IntervalDays: 7, AvailableWeekdays: []int16{1}, LastCompletedOn: &lastCompleted,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +58,7 @@ func TestStoreRoutineFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Routine.Name != "Walk" || record.LastEvent == nil || len(events) != 1 || events[0].Kind != EventKindBaseline {
+	if record.Routine.Name != "Walk" || record.LastEvent == nil || len(events) != 1 {
 		t.Fatalf("routine = %#v, events = %#v", record, events)
 	}
 	if err := store.UpdateRoutine(ctx, userID, routineID, RoutineInput{CategoryID: categories[0].ID, Name: "Daily walk", Notes: "Outside", Status: RoutineStatusActive, IntervalDays: 7, AvailableWeekdays: []int16{1}}); err != nil {
