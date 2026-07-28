@@ -1,0 +1,33 @@
+{{define "form.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New routine · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/" aria-label="alt home">alt</a><p><a href="/routines">Routines</a></p></header>
+  <main>
+    <section class="hero compact-hero"><div><p class="eyebrow">New routine</p><h1>Start a rhythm.</h1></div></section>
+    {{if .Categories}}
+    <form class="panel routine-form" action="/routines" method="post">
+      <label for="name">Name</label><input id="name" name="name" maxlength="200" required>
+      <label for="category_id">Category</label><select id="category_id" name="category_id" required>{{range .Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select>
+      <label for="interval_days">Interval in days</label><input id="interval_days" name="interval_days" type="number" min="1" value="1" required>
+      <fieldset><legend>Days when this can be done <span>(optional)</span></legend><div class="checkbox-grid">{{range $day := slice 1 2 3 4 5 6 7}}<label><input type="checkbox" name="available_weekdays" value="{{$day}}">{{$day}}</label>{{end}}</div><p class="field-help">1 is Monday; 7 is Sunday. Leave empty for any day.</p></fieldset>
+      <fieldset><legend>Active months <span>(optional)</span></legend><div class="checkbox-grid">{{range $month := slice 1 2 3 4 5 6 7 8 9 10 11 12}}<label><input type="checkbox" name="active_months" value="{{$month}}">{{$month}}</label>{{end}}</div><p class="field-help">Leave empty for every month.</p></fieldset>
+      <label for="notes">Notes</label><textarea id="notes" name="notes" maxlength="20000" rows="5" placeholder="Persistent instructions for this routine."></textarea>
+      <label for="baseline_on">Last completed date</label><input id="baseline_on" name="baseline_on" type="date" max="{{dateOnly .Today}}" value="{{dateOnly .Today}}" required>
+      <label class="checkbox-label"><input id="never_completed" type="checkbox" name="never_completed"> Never completed or unknown</label>
+      <button type="submit">Create routine</button>
+    </form>
+    {{else}}
+      <section class="panel"><p class="empty">Create an active category before adding a routine.</p><a class="button-link" href="/routine-categories">Manage categories</a></section>
+    {{end}}
+  </main>
+  <script>document.getElementById('never_completed')?.addEventListener('change', function () { document.getElementById('baseline_on').required = !this.checked; });</script>
+</body>
+</html>
+{{end}}
