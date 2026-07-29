@@ -29,6 +29,7 @@ type Plan struct {
 	Revision        int
 	SummaryMarkdown string
 	ContentMarkdown string
+	NotesMarkdown   string
 	CreatedAt       time.Time
 }
 

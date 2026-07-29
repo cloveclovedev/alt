@@ -17,15 +17,20 @@ const defaultConfigPath = "config/alt.toml"
 
 // Config is the fully resolved runtime configuration.
 type Config struct {
-	Env             string
-	Port            int
-	ShutdownTimeout time.Duration
-	LogLevel        string
-	DatabaseURL     string
-	MaxConnections  int32
-	UserID          string
-	UserDisplayName string
-	UserTimezone    string
+	Env                        string
+	Port                       int
+	ShutdownTimeout            time.Duration
+	LogLevel                   string
+	DatabaseURL                string
+	MaxConnections             int32
+	UserID                     string
+	UserDisplayName            string
+	UserTimezone               string
+	OpenRouterAPIKey           string
+	GoogleOAuthClientID        string
+	GoogleOAuthClientSecret    string
+	GoogleOAuthRedirectURL     string
+	CalendarTokenEncryptionKey string
 }
 
 type fileConfig struct {
@@ -48,7 +53,7 @@ type fileConfig struct {
 func Load(requireDatabase bool) (Config, error) {
 	cfg := Config{
 		Env:             "local",
-		Port:            8080,
+		Port:            28080,
 		ShutdownTimeout: 15 * time.Second,
 		LogLevel:        "info",
 		MaxConnections:  10,
@@ -85,6 +90,20 @@ func Load(requireDatabase bool) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	cfg.OpenRouterAPIKey, _, err = lookupApplicationSecret("OPENROUTER_API_KEY")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.GoogleOAuthClientSecret, _, err = lookupApplicationSecret("GOOGLE_OAUTH_CLIENT_SECRET")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.CalendarTokenEncryptionKey, _, err = lookupApplicationSecret("CALENDAR_TOKEN_ENCRYPTION_KEY")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.GoogleOAuthClientID = getenv("ALT_GOOGLE_OAUTH_CLIENT_ID", getenv("GOOGLE_OAUTH_CLIENT_ID", ""))
+	cfg.GoogleOAuthRedirectURL = getenv("ALT_GOOGLE_OAUTH_REDIRECT_URL", getenv("GOOGLE_OAUTH_REDIRECT_URL", ""))
 
 	if cfg.Port < 1 || cfg.Port > 65535 {
 		return Config{}, fmt.Errorf("PORT must be between 1 and 65535")
@@ -154,6 +173,16 @@ func lookupEnvOrFile(key string) (string, bool, error) {
 	}
 	value, ok := os.LookupEnv(key)
 	return strings.TrimSpace(value), ok, nil
+}
+
+// lookupApplicationSecret prefers product-prefixed values injected by the
+// shared development Secrets Manager project, while preserving generic names
+// for deployment systems that expose only this application's secrets.
+func lookupApplicationSecret(key string) (string, bool, error) {
+	if value, found, err := lookupEnvOrFile("ALT_" + key); err != nil || found {
+		return value, found, err
+	}
+	return lookupEnvOrFile(key)
 }
 
 func getenv(key, fallback string) string {

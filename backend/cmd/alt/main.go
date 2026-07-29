@@ -68,8 +68,9 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 
+	planningStore := planning.NewStore(pool)
 	service, err := planning.NewService(
-		planning.NewStore(pool),
+		planningStore,
 		cfg.UserID,
 		cfg.UserTimezone,
 	)
@@ -88,9 +89,41 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	githubClient := planning.NewGitHubClient()
+	openRouterClient := planning.NewOpenRouterClient(cfg.OpenRouterAPIKey)
+	var calendarClient *planning.GoogleCalendarClient
+	var calendarReader planning.CalendarPlanningReader
+	if cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "" && cfg.GoogleOAuthRedirectURL != "" && cfg.CalendarTokenEncryptionKey != "" {
+		cipher, cipherErr := planning.NewTokenCipher(cfg.CalendarTokenEncryptionKey)
+		if cipherErr != nil {
+			return cipherErr
+		}
+		calendarClient = planning.NewGoogleCalendarClient(planningStore, cipher, planning.CalendarOAuthConfig{
+			ClientID: cfg.GoogleOAuthClientID, ClientSecret: cfg.GoogleOAuthClientSecret, RedirectURL: cfg.GoogleOAuthRedirectURL,
+		})
+		calendarReader = calendarClient
+	}
+	dailyService, err := planning.NewDailyService(
+		planningStore, cfg.UserID, cfg.UserTimezone,
+		planning.NewDailyGatherer(planningStore, routineService, githubClient, calendarReader),
+		openRouterClient,
+	)
+	if err != nil {
+		return err
+	}
+	dailyHandler, err := planning.NewDailyHandler(dailyService, logger)
+	if err != nil {
+		return err
+	}
+	settingsHandler, err := planning.NewSettingsHandler(planningStore, cfg.UserID, githubClient, calendarClient, openRouterClient, logger)
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
 	planningHandler.Register(mux)
+	dailyHandler.Register(mux)
+	settingsHandler.Register(mux)
 	routineHandler.Register(mux)
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

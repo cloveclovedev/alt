@@ -65,6 +65,19 @@ func TestLoadReadsDatabaseURLFromFile(t *testing.T) {
 	}
 }
 
+func TestLoadPrefersApplicationPrefixedSecret(t *testing.T) {
+	t.Setenv("OPENROUTER_API_KEY", "generic-value")
+	t.Setenv("ALT_OPENROUTER_API_KEY", "application-value")
+
+	cfg, err := Load(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.OpenRouterAPIKey != "application-value" {
+		t.Fatalf("OpenRouterAPIKey = %q, want application-prefixed value", cfg.OpenRouterAPIKey)
+	}
+}
+
 func TestLoadRequiresDatabaseForWeb(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 
