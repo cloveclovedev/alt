@@ -32,3 +32,30 @@ Google subject identity and connection selection. See [Calendar connection futur
 Replace the functional MVP views with a deliberate visual system, including
 Markdown rendering, session history hierarchy, settings layout, and responsive
 interaction feedback.
+
+### Configurable issue time allocation
+
+Use Calendar source planning instructions to decide whether GitHub issues may
+be assigned to that calendar's time blocks or should remain priority-only
+recommendations. This preserves a user-specific planning style rather than
+globally prohibiting issue scheduling.
+
+### Daily planning interaction recovery
+
+Add asynchronous interaction feedback, source-specific retry and cancellation,
+and a visible retry action after an AI request fails.
+
+### Explicit plan revision flow
+
+Add an explicit revise action for a confirmed day. It should start a new
+session seeded from the latest revision and freshly gathered context.
+
+### Confirmed Calendar snapshot policy
+
+Define and enforce which enabled Calendar events are retained in a confirmed
+revision, rather than relying only on the AI proposal's selected events.
+
+### Daily planning test coverage
+
+Add automated coverage for source failure paths, GitHub pagination and rate
+limits, AI retry behavior, finalization cleanup, and revision sessions.
