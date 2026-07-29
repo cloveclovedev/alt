@@ -5,6 +5,16 @@ data/
 # Environment
 .env
 
+# Python generated files
+__pycache__/
+*.egg-info/
+.venv/
+
+# Legacy local artifacts
+webapp/
+.superpowers/
+docs/superpowers/
+
 # Local application configuration
 backend/config/alt.toml
 backend/alt
