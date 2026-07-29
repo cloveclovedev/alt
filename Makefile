@@ -1,4 +1,4 @@
-.PHONY: atlas-diff atlas-fmt atlas-status build test
+.PHONY: atlas-diff atlas-fmt atlas-status build test dev-bws
 
 MIGRATION_NAME ?= change
 
@@ -18,3 +18,7 @@ build:
 
 test:
 	cd backend && go test ./...
+
+dev-bws:
+	@test -n "$(PROJECT_ID)" || (echo "PROJECT_ID is required" >&2; exit 2)
+	sh scripts/bws-development-compose.sh "$(PROJECT_ID)"

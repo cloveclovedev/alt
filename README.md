@@ -29,7 +29,11 @@ Start PostgreSQL, apply migrations, and run the web application:
 docker compose up --build
 ```
 
-Open <http://127.0.0.1:8080/>.
+For development secrets from Bitwarden Secrets Manager, use the BWS helper
+instead of `.env` files. See
+[`docs/development/bws-development.md`](docs/development/bws-development.md).
+
+Open <http://127.0.0.1:28080/>.
 
 The stack binds application and database ports to loopback. Authentication is
 not implemented, so the local web service must not be exposed publicly.

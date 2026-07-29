@@ -43,6 +43,7 @@ func (s *Store) Load(
 		       r.revision,
 		       r.summary_markdown,
 		       r.content_markdown,
+		       COALESCE(r.notes_markdown, ''),
 		       r.created_at
 		FROM plans AS p
 		JOIN plan_revisions AS r ON r.plan_id = p.id
@@ -59,6 +60,7 @@ func (s *Store) Load(
 		&plan.Revision,
 		&plan.SummaryMarkdown,
 		&plan.ContentMarkdown,
+		&plan.NotesMarkdown,
 		&plan.CreatedAt,
 	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {

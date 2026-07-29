@@ -52,6 +52,9 @@ func NewHandler(app Application, logger *slog.Logger) (*Handler, error) {
 			}
 			return "Daily plan"
 		},
+		"statusLabel": func(status DailySessionStatus) string {
+			return strings.ReplaceAll(string(status), "_", " ")
+		},
 	}
 	tmpl, err := template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/*.html")
 	if err != nil {

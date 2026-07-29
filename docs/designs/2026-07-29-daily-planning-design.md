@@ -125,13 +125,13 @@ plan_revision_routines
 id
 plan_revision_id
 routine_id
-title
-category_name
 position
 ```
 
-`routine_id` references the routine domain. Title and category are also
-snapshotted for historical display.
+`routine_id` references the routine domain. Routines referenced by a confirmed
+plan cannot be deleted, while the revision Markdown remains the immutable
+human-readable display snapshot. This avoids duplicating mutable routine names
+and categories in structured rows.
 
 ### Action items
 
@@ -334,13 +334,16 @@ ciphertext is application data in PostgreSQL. The encryption key remains in the
 deployment's secret manager; storing that key beside the ciphertext is
 forbidden.
 
+The MVP permits one Google Calendar connection per application user. Multiple
+Google accounts and OpenID Connect subject storage are deferred to
+`2026-07-29-calendar-connection-future-work.md`.
+
 ### Calendar sources and interpretation
 
 ```text
 google_calendar_connections
 id
 user_id
-google_subject
 encrypted_refresh_token
 granted_scopes
 created_at
@@ -452,6 +455,9 @@ OpenRouter is the only inference adapter in the MVP.
 
 The API key is an application secret injected at runtime. It is not stored in
 PostgreSQL or accepted through the web application.
+
+End-user AI bring-your-own-key support is deferred to
+`2026-07-29-ai-byok-future-work.md`.
 
 Model choices are purpose-based:
 

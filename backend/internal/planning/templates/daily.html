@@ -1,0 +1,94 @@
+{{define "daily.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily planning · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">alt</a>
+    <p>Daily planning</p>
+    <nav class="header-nav"><a href="/routines">Routines</a><a href="/settings/calendar">Settings</a></nav>
+  </header>
+  <main>{{template "daily-content" .}}</main>
+</body>
+</html>
+{{end}}
+
+{{define "daily-content"}}
+<section class="hero compact-hero">
+  <div>
+    <p class="eyebrow">Daily planning</p>
+    <h1>{{.Date.Format "Mon, 02 Jan 2006"}}</h1>
+    <p class="timezone">{{.Timezone}}</p>
+  </div>
+</section>
+
+{{with .Session}}
+<section class="panel plan-panel" id="daily-planning">
+  <div class="section-heading"><h2>Planning session</h2><span class="revision">{{statusLabel .Status}}</span></div>
+  <form action="/planning/daily/{{dateOnly $.Date}}/context" method="post">
+    <input type="hidden" name="session_id" value="{{.ID}}">
+    <button type="submit">Refresh context</button>
+  </form>
+  <p>Calendar: {{.Context.CalendarStatus}} · GitHub: {{.Context.GitHubStatus}} · Routines: {{.Context.RoutineStatus}}</p>
+
+  {{if eq .Status "context_blocked"}}
+    <p class="empty">One or more sources failed. Retry or explicitly continue without them.</p>
+    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/continue" method="post">
+      <input type="hidden" name="session_id" value="{{.ID}}">
+      <button type="submit">Continue without failed sources</button>
+    </form>
+  {{else if eq .Status "reviewing"}}
+    {{with .Preview}}
+      <div class="saved-plan">
+        <h3>Preview</h3>
+        <pre>{{.SummaryMarkdown}}</pre>
+        <pre>{{.ContentMarkdown}}</pre>
+        <h3>Selected work</h3>
+        <p>{{len .GitHubIssues}} GitHub issues · {{len .RoutineIDs}} routines · {{len .CalendarEvents}} Calendar events · {{len .ActionItems}} action items</p>
+      </div>
+    {{end}}
+    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/chat" method="post">
+      <input type="hidden" name="session_id" value="{{.ID}}">
+      <button type="submit">Back to chat</button>
+    </form>
+    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
+      <input type="hidden" name="session_id" value="{{.ID}}">
+      <button type="submit">Confirm plan</button>
+    </form>
+  {{else if eq .Status "chatting"}}
+    {{if .Messages}}
+      <div class="saved-plan">
+        {{range .Messages}}<p><strong>{{.Role}}:</strong> {{.Content}}</p>{{end}}
+      </div>
+    {{else}}
+      <p class="empty">Send a message to begin planning with the loaded context.</p>
+    {{end}}
+    <form action="/planning/daily/{{dateOnly $.Date}}/messages" method="post">
+      <input type="hidden" name="session_id" value="{{.ID}}">
+      <label for="content">Message</label>
+      <textarea id="content" name="content" required></textarea>
+      <button type="submit">Send</button>
+    </form>
+    {{if .Messages}}
+      <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/review" method="post">
+        <input type="hidden" name="session_id" value="{{.ID}}">
+        <button type="submit">Review plan</button>
+      </form>
+    {{end}}
+  {{end}}
+</section>
+{{end}}
+
+{{with .Plan}}
+<section class="panel plan-panel">
+  <h2>Confirmed revision {{.Revision}}</h2>
+  <pre>{{.SummaryMarkdown}}</pre>
+  <pre>{{.ContentMarkdown}}</pre>
+</section>
+{{end}}
+{{end}}
