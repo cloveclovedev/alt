@@ -1,4 +1,0 @@
-interface:
-  display_name: "Publish alt PR"
-  short_description: "Publish and squash-merge alt changes with gh"
-  default_prompt: "Use $codex-publish-alt-pr to publish the current alt changes through a scoped branch, PR, checks, and squash merge."

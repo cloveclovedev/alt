@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage alt with gh"
+  short_description: "Manage alt issues, PRs, merges, and cleanup"
+  default_prompt: "Use $gh-manage-alt to manage the requested alt GitHub work with gh, including verification and cleanup."
