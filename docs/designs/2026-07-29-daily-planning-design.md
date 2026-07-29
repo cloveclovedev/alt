@@ -336,7 +336,7 @@ forbidden.
 
 The MVP permits one Google Calendar connection per application user. Multiple
 Google accounts and OpenID Connect subject storage are deferred to
-`2026-07-29-calendar-connection-future-work.md`.
+[GitHub Issue #48](https://github.com/cloveclovedev/alt/issues/48).
 
 ### Calendar sources and interpretation
 
@@ -457,7 +457,7 @@ The API key is an application secret injected at runtime. It is not stored in
 PostgreSQL or accepted through the web application.
 
 End-user AI bring-your-own-key support is deferred to
-`2026-07-29-ai-byok-future-work.md`.
+[GitHub Issue #47](https://github.com/cloveclovedev/alt/issues/47).
 
 Model choices are purpose-based:
 
