@@ -5,6 +5,11 @@ data/
 # Environment
 .env
 
+# Python generated files
+__pycache__/
+*.egg-info/
+.venv/
+
 # Local application configuration
 backend/config/alt.toml
 backend/alt
