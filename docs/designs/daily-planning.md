@@ -1,10 +1,9 @@
 # Daily Planning Design
 
 - Status: Proposed
-- Date: 2026-07-29
 - Depends on:
-  - `2026-07-27-go-web-app-design.md`
-  - `2026-07-29-routine-design.md`
+  - `go-web-app.md`
+  - `routine.md`
 
 ## Context
 
@@ -176,6 +175,11 @@ The revision stores all enabled events for the plan date and any later event
 that the final plan explicitly mentions as relevant. It does not store the
 entire 30-day input context.
 
+Calendar events are presentation context, not the plan's prose. The Markdown
+snapshots never narrate the day's timeline; the events surface only as a
+minimal, low-footprint "time · title" list rendered from these structured rows.
+The authoritative day view remains the user's calendar application.
+
 `calendar_source_id` is nullable and uses `ON DELETE SET NULL`; the external
 calendar and event IDs plus the display snapshot remain when a connection is
 removed. Calendar source deletion therefore cannot damage confirmed plan
@@ -307,6 +311,43 @@ it never updates the previous one.
 After finalization, message content, temporary context, and preview JSON are
 deleted. The session retains only status, timestamps, confirmed revision,
 prompt version, selected model, and aggregate usage metadata.
+
+## Presentation and rendering
+
+The plan is authored as prose plus structured selections, and it must render as
+a document a human can review, not as raw Markdown in a `<pre>` block.
+
+### Markdown rendering
+
+Summary, content, and notes Markdown, and assistant chat messages, are rendered
+server-side to sanitized HTML. Rendering uses a CommonMark parser followed by an
+allowlist sanitizer, so headings, lists, and wrapping display correctly and
+nothing overflows its frame. AI output and user Markdown are untrusted and pass
+through the same sanitizer; user chat messages are shown as escaped plain text
+rather than parsed as Markdown, because user turns are instructions, not
+authored documents.
+
+### Structured selections over prose
+
+`content_markdown` carries only prose: the day's priorities and the reasoning
+and trade-offs behind them. Selected work does not appear as duplicated Markdown
+lists. GitHub issues, routines, and action items render as their own linked,
+structured lists beside the prose:
+
+- during review, the preview joins the proposal's selections against saved
+  session context to display titles and links;
+- for a confirmed revision, the structured component rows are loaded back for
+  display through a dedicated store read.
+
+Snapshotted titles are preferred so history stays readable after an issue is
+renamed or deleted.
+
+### Prompt shaping
+
+The daily-planning prompt version is advanced when this presentation contract
+changes so confirmed revisions remain reproducible. The prompt instructs the
+model to keep selected work in the structured fields, to avoid duplicating those
+selections in Markdown, and to never narrate the calendar timeline in prose.
 
 ## Google Calendar integration
 
@@ -528,15 +569,25 @@ This table contains no prompt, response, Calendar title, or issue title.
 Initial routes are:
 
 ```text
-/                                      current plan and Plan today / Revise plan
+/                                      today entry card: status, start/resume, recent confirmed summary
 /planning/daily/{date}                 active chat or final plan
 /planning/daily/{date}/context         gather or refresh context
 /planning/daily/{date}/review          generate and show preview
 /planning/daily/{date}/confirm         confirm immutable revision
+/plans/daily/{date}                    read-only view of a past confirmed plan
 /settings/calendar                     Google connection and source rules
 /settings/github                       public repository configuration
 /settings/ai                           ZDR-compatible model selection
 ```
+
+The home page is the single entry to today's planning. It is a compact card
+showing today's status, a start-or-resume action that opens
+`/planning/daily/{today}`, and a rendered summary of the most recent confirmed
+plan. There is no separate "Plan today" navigation duplicating this action.
+
+Free-form manual revision editing is removed. The AI planning flow is the only
+path that creates a daily revision, so the home page no longer exposes a raw
+Summary/content Markdown form.
 
 Exact handler paths may change during implementation, but all transports call
 the same application services.
@@ -606,3 +657,22 @@ the same application services.
   <https://openrouter.ai/docs/guides/features/zdr>
 - OpenRouter provider routing:
   <https://openrouter.ai/docs/guides/routing/provider-selection>
+
+## Decision log
+
+This is a living design document. Each entry records a change to the design;
+the sections above always describe the current intended design.
+
+- 2026-07-29 — Initial daily-planning design: deterministic context gather,
+  resumable non-streaming chat, structured proposal, and immutable confirmation.
+  Implemented in [#43](https://github.com/cloveclovedev/alt/pull/43).
+- 2026-08-02 — Added the presentation contract: single compact home entry card
+  and removal of the manual revision form; Markdown rendered to sanitized HTML
+  with escaped user chat; structured lists for selected issues, routines, and
+  action items; calendar reduced to a minimal "time · title" reference never
+  narrated in Markdown; and an advanced prompt version. Alternatives considered:
+  a full inline session on the home page (rejected for a compact card plus
+  navigation), dropping calendar events from confirmed plans entirely (rejected
+  to keep constraints and history), and keeping the manual form as an advanced
+  fallback (rejected to avoid two authoring paths). Tracked in
+  [#61](https://github.com/cloveclovedev/alt/issues/61).

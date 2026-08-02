@@ -1,7 +1,6 @@
 # Go Web Application Foundation Design
 
 - Status: Approved
-- Date: 2026-07-27
 - Branch: `refactor/go-web-app`
 
 ## Context
@@ -224,3 +223,11 @@ The following receive their own design before schema is added:
 - external context adapters;
 - Flutter JSON API;
 - hosted-service entitlements and billing.
+
+## Decision log
+
+This is a living design document. Each entry records a change to the design;
+the sections above always describe the current intended design.
+
+- 2026-07-27 — Initial foundation design: rebuild alt as a single Go web
+  application with typed boundaries.

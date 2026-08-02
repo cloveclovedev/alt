@@ -16,14 +16,17 @@ design records that explain major decisions in alt.
 
 ## Design records
 
-Design records capture decisions at a point in time. The
+Each design record is a living, per-feature document: it describes that
+feature's current intended design, and a Decision log at the end records how the
+design changed over time with links to the issues and pull requests that made
+each change. Files are named for the feature, not dated. The
 [Architecture Overview](architecture/overview.md) remains the source of truth
 for the system as it exists now.
 
-- [Go Web Application Foundation Design](designs/2026-07-27-go-web-app-design.md)
-- [Daily Planning Design](designs/2026-07-29-daily-planning-design.md)
-- [Daily Run Design](designs/2026-07-29-daily-run-design.md)
-- [Routine Management Design](designs/2026-07-29-routine-design.md)
+- [Go Web Application Foundation Design](designs/go-web-app.md)
+- [Daily Planning Design](designs/daily-planning.md)
+- [Daily Run Design](designs/daily-run.md)
+- [Routine Management Design](designs/routine.md)
 
 ## Work tracking
 
