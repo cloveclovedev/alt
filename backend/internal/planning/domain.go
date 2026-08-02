@@ -18,6 +18,9 @@ type View struct {
 	PeriodStart time.Time
 	Timezone    string
 	Plan        *Plan
+	// Home marks the today entry card, which offers a start-or-resume action
+	// and a compact summary. Read-only past-plan views leave it false.
+	Home bool
 }
 
 // Plan is the latest immutable revision for a planning period.
@@ -31,12 +34,5 @@ type Plan struct {
 	ContentMarkdown string
 	NotesMarkdown   string
 	CreatedAt       time.Time
-}
-
-// SavePlanInput is the transport-neutral plan revision request.
-type SavePlanInput struct {
-	Kind            string
-	PeriodStart     string
-	SummaryMarkdown string
-	ContentMarkdown string
+	Components      PlanComponents
 }

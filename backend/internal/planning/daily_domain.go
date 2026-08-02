@@ -159,4 +159,111 @@ type DailyPlanningView struct {
 	Timezone string
 	Session  *DailyPlanningSession
 	Plan     *Plan
+	// PreviewComponents holds the reviewing session's proposal joined against
+	// its context so titles and links can render. It is nil unless the session
+	// is reviewing an unconfirmed preview.
+	PreviewComponents *PlanComponents
+}
+
+// PlanComponents holds the structured selections of one revision for display.
+// Prose lives in Markdown; these are rendered as their own lists beside it.
+type PlanComponents struct {
+	GitHubIssues   []PlanGitHubIssue
+	Routines       []PlanRoutine
+	ActionItems    []ActionItem
+	CalendarEvents []PlanCalendarEvent
+}
+
+// Empty reports whether no structured selection exists.
+func (c PlanComponents) Empty() bool {
+	return len(c.GitHubIssues) == 0 && len(c.Routines) == 0 &&
+		len(c.ActionItems) == 0 && len(c.CalendarEvents) == 0
+}
+
+// PlanGitHubIssue is a selected issue with its display snapshot.
+type PlanGitHubIssue struct {
+	RepositoryOwner string
+	RepositoryName  string
+	Number          int
+	Title           string
+	HTMLURL         string
+}
+
+// Repository is the "owner/name" label for a selected issue.
+func (i PlanGitHubIssue) Repository() string {
+	return i.RepositoryOwner + "/" + i.RepositoryName
+}
+
+// PlanRoutine is a selected routine's display snapshot.
+type PlanRoutine struct {
+	Name         string
+	CategoryName string
+}
+
+// PlanCalendarEvent is a selected calendar event reduced to a minimal reference.
+type PlanCalendarEvent struct {
+	TimeLabel string
+	Title     string
+	Role      CalendarRole
+	HTMLURL   string
+}
+
+// previewComponents joins a proposal's selections against session context so the
+// reviewing preview can display titles, links, and times.
+func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, location *time.Location) PlanComponents {
+	components := PlanComponents{ActionItems: proposal.ActionItems}
+
+	issuesByKey := make(map[string]GitHubIssue, len(value.GitHub))
+	for _, issue := range value.GitHub {
+		issuesByKey[githubIssueKey(issue.RepositoryOwner, issue.RepositoryName, issue.Number)] = issue
+	}
+	for _, selected := range proposal.GitHubIssues {
+		if issue, ok := issuesByKey[githubIssueKey(selected.RepositoryOwner, selected.RepositoryName, selected.Number)]; ok {
+			components.GitHubIssues = append(components.GitHubIssues, PlanGitHubIssue{
+				RepositoryOwner: issue.RepositoryOwner,
+				RepositoryName:  issue.RepositoryName,
+				Number:          issue.Number,
+				Title:           issue.Title,
+				HTMLURL:         issue.HTMLURL,
+			})
+		}
+	}
+
+	routinesByID := make(map[string]RoutineCandidate, len(value.Routines))
+	for _, routine := range value.Routines {
+		routinesByID[routine.RoutineID] = routine
+	}
+	for _, id := range proposal.RoutineIDs {
+		if routine, ok := routinesByID[id]; ok {
+			components.Routines = append(components.Routines, PlanRoutine{Name: routine.Name, CategoryName: routine.CategoryName})
+		}
+	}
+
+	eventsByKey := make(map[string]CalendarEvent, len(value.Calendar))
+	for _, event := range value.Calendar {
+		eventsByKey[calendarEventKey(event.CalendarSourceID, event.ExternalEventID)] = event
+	}
+	for _, selected := range proposal.CalendarEvents {
+		if event, ok := eventsByKey[calendarEventKey(selected.CalendarSourceID, selected.ExternalEventID)]; ok {
+			components.CalendarEvents = append(components.CalendarEvents, PlanCalendarEvent{
+				TimeLabel: calendarTimeLabel(event.AllDay, event.StartsAt, event.EndsAt, location),
+				Title:     event.Title,
+				Role:      event.Role,
+				HTMLURL:   event.HTMLURL,
+			})
+		}
+	}
+	return components
+}
+
+// calendarTimeLabel formats an event as a compact time reference in the local zone.
+func calendarTimeLabel(allDay bool, startsAt, endsAt *time.Time, location *time.Location) string {
+	if allDay || startsAt == nil {
+		return "All day"
+	}
+	label := startsAt.In(location).Format("15:04")
+	if endsAt != nil {
+		label += "–" + endsAt.In(location).Format("15:04")
+	}
+	return label
 }

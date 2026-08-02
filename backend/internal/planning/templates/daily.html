@@ -30,11 +30,11 @@
 {{with .Session}}
 <section class="panel plan-panel" id="daily-planning">
   <div class="section-heading"><h2>Planning session</h2><span class="revision">{{statusLabel .Status}}</span></div>
-  <form action="/planning/daily/{{dateOnly $.Date}}/context" method="post">
+  <p class="source-status">Calendar: {{.Context.CalendarStatus}} · GitHub: {{.Context.GitHubStatus}} · Routines: {{.Context.RoutineStatus}}</p>
+  <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/context" method="post">
     <input type="hidden" name="session_id" value="{{.ID}}">
-    <button type="submit">Refresh context</button>
+    <button type="submit" class="secondary">Refresh context</button>
   </form>
-  <p>Calendar: {{.Context.CalendarStatus}} · GitHub: {{.Context.GitHubStatus}} · Routines: {{.Context.RoutineStatus}}</p>
 
   {{if eq .Status "context_blocked"}}
     <p class="empty">One or more sources failed. Retry or explicitly continue without them.</p>
@@ -45,25 +45,33 @@
   {{else if eq .Status "reviewing"}}
     {{with .Preview}}
       <div class="saved-plan">
-        <h3>Preview</h3>
-        <pre>{{.SummaryMarkdown}}</pre>
-        <pre>{{.ContentMarkdown}}</pre>
-        <h3>Selected work</h3>
-        <p>{{len .GitHubIssues}} GitHub issues · {{len .RoutineIDs}} routines · {{len .CalendarEvents}} Calendar events · {{len .ActionItems}} action items</p>
+        <h3>Summary</h3>
+        {{markdown .SummaryMarkdown}}
+        <h3>Full plan</h3>
+        {{markdown .ContentMarkdown}}
+        {{if .NotesMarkdown}}<h3>Notes</h3>{{markdown .NotesMarkdown}}{{end}}
       </div>
     {{end}}
-    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/chat" method="post">
-      <input type="hidden" name="session_id" value="{{.ID}}">
-      <button type="submit">Back to chat</button>
-    </form>
-    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
-      <input type="hidden" name="session_id" value="{{.ID}}">
-      <button type="submit">Confirm plan</button>
-    </form>
+    {{with $.PreviewComponents}}{{template "plan-components" .}}{{end}}
+    <div class="inline-form">
+      <form action="/planning/daily/{{dateOnly $.Date}}/chat" method="post">
+        <input type="hidden" name="session_id" value="{{.ID}}">
+        <button type="submit" class="secondary">Back to chat</button>
+      </form>
+      <form action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
+        <input type="hidden" name="session_id" value="{{.ID}}">
+        <button type="submit">Confirm plan</button>
+      </form>
+    </div>
   {{else if eq .Status "chatting"}}
     {{if .Messages}}
-      <div class="saved-plan">
-        {{range .Messages}}<p><strong>{{.Role}}:</strong> {{.Content}}</p>{{end}}
+      <div class="chat">
+        {{range .Messages}}
+          <div class="message message-{{.Role}}">
+            <span class="role">{{.Role}}</span>
+            {{if eq .Role "assistant"}}<div class="message-body">{{markdown .Content}}</div>{{else}}<p class="message-body">{{.Content}}</p>{{end}}
+          </div>
+        {{end}}
       </div>
     {{else}}
       <p class="empty">Send a message to begin planning with the loaded context.</p>
@@ -77,7 +85,7 @@
     {{if .Messages}}
       <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/review" method="post">
         <input type="hidden" name="session_id" value="{{.ID}}">
-        <button type="submit">Review plan</button>
+        <button type="submit" class="secondary">Review plan</button>
       </form>
     {{end}}
   {{end}}
@@ -86,9 +94,8 @@
 
 {{with .Plan}}
 <section class="panel plan-panel">
-  <h2>Confirmed revision {{.Revision}}</h2>
-  <pre>{{.SummaryMarkdown}}</pre>
-  <pre>{{.ContentMarkdown}}</pre>
+  <div class="section-heading"><h2>Confirmed revision {{.Revision}}</h2></div>
+  {{template "plan-body" .}}
 </section>
 {{end}}
 {{end}}

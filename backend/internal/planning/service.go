@@ -35,11 +35,16 @@ func NewService(store *Store, userID, timezone string) (*Service, error) {
 	}, nil
 }
 
-// Home returns the daily plan for the current local date.
+// Home returns the daily plan for the current local date as the today entry card.
 func (s *Service) Home(ctx context.Context) (View, error) {
 	now := s.now().In(s.location)
 	periodStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, s.location)
-	return s.store.Load(ctx, s.userID, KindDaily, periodStart, s.location)
+	view, err := s.store.Load(ctx, s.userID, KindDaily, periodStart, s.location)
+	if err != nil {
+		return View{}, err
+	}
+	view.Home = true
+	return view, nil
 }
 
 // ViewPlan returns a plan for an explicit kind and period start.
@@ -49,30 +54,6 @@ func (s *Service) ViewPlan(ctx context.Context, kind, periodStart string) (View,
 		return View{}, err
 	}
 	return s.store.Load(ctx, s.userID, parsedKind, parsedStart, s.location)
-}
-
-// SavePlan validates and stores a new immutable plan revision.
-func (s *Service) SavePlan(ctx context.Context, input SavePlanInput) error {
-	kind, periodStart, err := s.parsePeriod(input.Kind, input.PeriodStart)
-	if err != nil {
-		return err
-	}
-
-	input.SummaryMarkdown = strings.TrimSpace(input.SummaryMarkdown)
-	input.ContentMarkdown = strings.TrimSpace(input.ContentMarkdown)
-	if input.SummaryMarkdown == "" {
-		return fmt.Errorf("%w: plan summary is required", ErrInvalidInput)
-	}
-	if input.ContentMarkdown == "" {
-		return fmt.Errorf("%w: plan content is required", ErrInvalidInput)
-	}
-	if len([]rune(input.SummaryMarkdown)) > 5_000 {
-		return fmt.Errorf("%w: plan summary is too long", ErrInvalidInput)
-	}
-	if len([]rune(input.ContentMarkdown)) > 50_000 {
-		return fmt.Errorf("%w: plan content is too long", ErrInvalidInput)
-	}
-	return s.store.Save(ctx, s.userID, kind, periodStart, input)
 }
 
 func (s *Service) parsePeriod(rawKind, rawPeriodStart string) (Kind, time.Time, error) {

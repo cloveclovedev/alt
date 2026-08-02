@@ -68,68 +68,118 @@ func (s *Store) Load(
 	}
 	if err == nil {
 		plan.CreatedAt = plan.CreatedAt.In(location)
+		components, err := s.loadRevisionComponents(ctx, plan.RevisionID, location)
+		if err != nil {
+			return View{}, err
+		}
+		plan.Components = components
 		view.Plan = &plan
 	}
 	return view, nil
 }
 
-// Save creates the logical plan when needed and appends a new revision.
-func (s *Store) Save(
-	ctx context.Context,
-	userID string,
-	kind Kind,
-	periodStart time.Time,
-	input SavePlanInput,
-) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+// loadRevisionComponents reads the structured selections stored with a revision
+// so a confirmed plan can render them as lists beside its prose.
+func (s *Store) loadRevisionComponents(ctx context.Context, revisionID string, location *time.Location) (PlanComponents, error) {
+	var components PlanComponents
+
+	issueRows, err := s.pool.Query(ctx, `
+		SELECT repository_owner, repository_name, issue_number, title, html_url
+		FROM plan_revision_github_issues
+		WHERE plan_revision_id = $1
+		ORDER BY position
+	`, revisionID)
 	if err != nil {
-		return fmt.Errorf("begin plan transaction: %w", err)
+		return PlanComponents{}, fmt.Errorf("load revision GitHub issues: %w", err)
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	periodStartText := periodStart.Format(time.DateOnly)
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO plans (user_id, kind, period_start)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, kind, period_start) DO NOTHING
-	`, userID, kind, periodStartText); err != nil {
-		return fmt.Errorf("ensure plan: %w", err)
+	for issueRows.Next() {
+		var issue PlanGitHubIssue
+		if err := issueRows.Scan(&issue.RepositoryOwner, &issue.RepositoryName, &issue.Number, &issue.Title, &issue.HTMLURL); err != nil {
+			issueRows.Close()
+			return PlanComponents{}, fmt.Errorf("scan revision GitHub issue: %w", err)
+		}
+		components.GitHubIssues = append(components.GitHubIssues, issue)
 	}
-
-	var planID string
-	if err := tx.QueryRow(ctx, `
-		SELECT id::text
-		FROM plans
-		WHERE user_id = $1
-		  AND kind = $2
-		  AND period_start = $3
-		FOR UPDATE
-	`, userID, kind, periodStartText).Scan(&planID); err != nil {
-		return fmt.Errorf("lock plan: %w", err)
+	issueRows.Close()
+	if err := issueRows.Err(); err != nil {
+		return PlanComponents{}, fmt.Errorf("iterate revision GitHub issues: %w", err)
 	}
 
-	var revision int
-	if err := tx.QueryRow(ctx, `
-		SELECT COALESCE(MAX(revision), 0) + 1
-		FROM plan_revisions
-		WHERE plan_id = $1
-	`, planID).Scan(&revision); err != nil {
-		return fmt.Errorf("select next plan revision: %w", err)
+	routineRows, err := s.pool.Query(ctx, `
+		SELECT r.name, c.name
+		FROM plan_revision_routines AS pr
+		JOIN routines AS r ON r.id = pr.routine_id
+		JOIN routine_categories AS c ON c.id = r.category_id
+		WHERE pr.plan_revision_id = $1
+		ORDER BY pr.position
+	`, revisionID)
+	if err != nil {
+		return PlanComponents{}, fmt.Errorf("load revision routines: %w", err)
+	}
+	for routineRows.Next() {
+		var routine PlanRoutine
+		if err := routineRows.Scan(&routine.Name, &routine.CategoryName); err != nil {
+			routineRows.Close()
+			return PlanComponents{}, fmt.Errorf("scan revision routine: %w", err)
+		}
+		components.Routines = append(components.Routines, routine)
+	}
+	routineRows.Close()
+	if err := routineRows.Err(); err != nil {
+		return PlanComponents{}, fmt.Errorf("iterate revision routines: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO plan_revisions (
-			plan_id,
-			revision,
-			summary_markdown,
-			content_markdown
+	actionRows, err := s.pool.Query(ctx, `
+		SELECT title, note
+		FROM plan_revision_action_items
+		WHERE plan_revision_id = $1
+		ORDER BY position
+	`, revisionID)
+	if err != nil {
+		return PlanComponents{}, fmt.Errorf("load revision action items: %w", err)
+	}
+	for actionRows.Next() {
+		var item ActionItem
+		if err := actionRows.Scan(&item.Title, &item.Note); err != nil {
+			actionRows.Close()
+			return PlanComponents{}, fmt.Errorf("scan revision action item: %w", err)
+		}
+		components.ActionItems = append(components.ActionItems, item)
+	}
+	actionRows.Close()
+	if err := actionRows.Err(); err != nil {
+		return PlanComponents{}, fmt.Errorf("iterate revision action items: %w", err)
+	}
+
+	eventRows, err := s.pool.Query(ctx, `
+		SELECT title, all_day, starts_at, ends_at, role::text, COALESCE(html_url, '')
+		FROM plan_revision_calendar_events
+		WHERE plan_revision_id = $1
+		ORDER BY position
+	`, revisionID)
+	if err != nil {
+		return PlanComponents{}, fmt.Errorf("load revision calendar events: %w", err)
+	}
+	for eventRows.Next() {
+		var (
+			event    PlanCalendarEvent
+			allDay   bool
+			startsAt *time.Time
+			endsAt   *time.Time
+			role     string
 		)
-		VALUES ($1, $2, $3, $4)
-	`, planID, revision, input.SummaryMarkdown, input.ContentMarkdown); err != nil {
-		return fmt.Errorf("insert plan revision: %w", err)
+		if err := eventRows.Scan(&event.Title, &allDay, &startsAt, &endsAt, &role, &event.HTMLURL); err != nil {
+			eventRows.Close()
+			return PlanComponents{}, fmt.Errorf("scan revision calendar event: %w", err)
+		}
+		event.Role = CalendarRole(role)
+		event.TimeLabel = calendarTimeLabel(allDay, startsAt, endsAt, location)
+		components.CalendarEvents = append(components.CalendarEvents, event)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit plan revision: %w", err)
+	eventRows.Close()
+	if err := eventRows.Err(); err != nil {
+		return PlanComponents{}, fmt.Errorf("iterate revision calendar events: %w", err)
 	}
-	return nil
+
+	return components, nil
 }

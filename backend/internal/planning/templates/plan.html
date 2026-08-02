@@ -12,49 +12,50 @@
   <header class="site-header">
     <a class="brand" href="/" aria-label="alt home">alt</a>
     <p>Planning</p>
-    <nav class="header-nav"><a href="/planning/daily/{{dateOnly .PeriodStart}}">Plan today</a><a href="/routines">Routines</a><a href="/settings/calendar">Settings</a></nav>
+    <nav class="header-nav"><a href="/routines">Routines</a><a href="/settings/calendar">Settings</a></nav>
   </header>
 
   <main>
-    <section class="hero">
-      <div>
-        <p class="eyebrow">{{.Kind}}</p>
-        <h1>{{periodLabel .Kind .PeriodStart}}</h1>
-        <p class="timezone">{{.Timezone}}</p>
-      </div>
-      <p class="hero-copy">Keep a concise summary and the complete plan together.</p>
-    </section>
-
-    <section class="panel plan-panel" id="plan">
-      <div class="section-heading">
+    {{if .Home}}
+      <section class="panel today-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h2>{{periodLabel .Kind .PeriodStart}}</h2>
+          </div>
+          {{with .Plan}}<span class="revision">Revision {{.Revision}}</span>{{end}}
+        </div>
+        <a class="button-link" href="/planning/daily/{{dateOnly .PeriodStart}}">
+          {{if .Plan}}Resume or revise today's plan{{else}}Start today's plan{{end}}
+        </a>
+        {{with .Plan}}
+          <div class="saved-plan">{{markdown .SummaryMarkdown}}</div>
+        {{end}}
+      </section>
+    {{else}}
+      <section class="hero">
         <div>
-          <p class="eyebrow">Direction</p>
-          <h2>{{planTitle .Kind}}</h2>
+          <p class="eyebrow">{{.Kind}}</p>
+          <h1>{{periodLabel .Kind .PeriodStart}}</h1>
+          <p class="timezone">{{.Timezone}}</p>
         </div>
-        {{with .Plan}}<span class="revision">Revision {{.Revision}}</span>{{end}}
-      </div>
+      </section>
 
-      {{with .Plan}}
-        <div class="saved-plan">
-          <h3>Summary</h3>
-          <pre>{{.SummaryMarkdown}}</pre>
-          <h3>Full plan</h3>
-          <pre>{{.ContentMarkdown}}</pre>
+      <section class="panel plan-panel" id="plan">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Direction</p>
+            <h2>{{planTitle .Kind}}</h2>
+          </div>
+          {{with .Plan}}<span class="revision">Revision {{.Revision}}</span>{{end}}
         </div>
-      {{else}}
-        <p class="empty">No plan has been saved for this period.</p>
-      {{end}}
-
-      <form action="/plans/{{.Kind}}/{{dateOnly .PeriodStart}}/revisions" method="post">
-        <label for="summary_markdown">Summary Markdown</label>
-        <textarea id="summary_markdown" name="summary_markdown" rows="5" maxlength="5000" required placeholder="A concise version for quick review or publishing.">{{with .Plan}}{{.SummaryMarkdown}}{{end}}</textarea>
-
-        <label for="content_markdown">Full plan Markdown</label>
-        <textarea id="content_markdown" name="content_markdown" rows="16" maxlength="50000" required placeholder="# Plan&#10;&#10;Write the complete plan.">{{with .Plan}}{{.ContentMarkdown}}{{end}}</textarea>
-
-        <button type="submit">Save new revision</button>
-      </form>
-    </section>
+        {{with .Plan}}
+          {{template "plan-body" .}}
+        {{else}}
+          <p class="empty">No plan has been saved for this period.</p>
+        {{end}}
+      </section>
+    {{end}}
   </main>
 </body>
 </html>

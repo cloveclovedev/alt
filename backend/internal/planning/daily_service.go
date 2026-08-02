@@ -8,7 +8,7 @@ import (
 )
 
 const dailyPlanningPurpose = "daily_planning"
-const dailyPlanningPromptVersion = "daily-planning-v1"
+const dailyPlanningPromptVersion = "daily-planning-v2"
 
 // DailyContextGatherer owns deterministic external I/O for planning evidence.
 type DailyContextGatherer interface {
@@ -296,6 +296,10 @@ func (s *DailyService) dailyView(ctx context.Context, date time.Time, session *D
 		return DailyPlanningView{}, err
 	}
 	view.Plan = planView.Plan
+	if session != nil && session.Status == DailySessionReviewing && session.Preview != nil {
+		components := previewComponents(*session.Preview, session.Context, s.location)
+		view.PreviewComponents = &components
+	}
 	return view, nil
 }
 

@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/cloveclovedev/alt/internal/core/markdown"
 )
 
-//go:embed templates/daily.html
+//go:embed templates/daily.html templates/components.html
 var dailyTemplatesFS embed.FS
 
 // DailyApplication is the web-facing daily planning service boundary.
@@ -38,7 +40,8 @@ func NewDailyHandler(app DailyApplication, logger *slog.Logger) (*DailyHandler, 
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"dateOnly":    func(value time.Time) string { return value.Format(time.DateOnly) },
 		"statusLabel": func(status DailySessionStatus) string { return strings.ReplaceAll(string(status), "_", " ") },
-	}).ParseFS(dailyTemplatesFS, "templates/daily.html")
+		"markdown":    markdown.ToHTML,
+	}).ParseFS(dailyTemplatesFS, "templates/daily.html", "templates/components.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse daily planning template: %w", err)
 	}

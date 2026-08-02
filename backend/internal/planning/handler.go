@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/cloveclovedev/alt/internal/core/markdown"
 )
 
 //go:embed templates/*.html
@@ -23,7 +25,6 @@ var staticFS embed.FS
 type Application interface {
 	Home(context.Context) (View, error)
 	ViewPlan(context.Context, string, string) (View, error)
-	SavePlan(context.Context, SavePlanInput) error
 }
 
 // Handler serves the planning web interface.
@@ -55,6 +56,7 @@ func NewHandler(app Application, logger *slog.Logger) (*Handler, error) {
 		"statusLabel": func(status DailySessionStatus) string {
 			return strings.ReplaceAll(string(status), "_", " ")
 		},
+		"markdown": markdown.ToHTML,
 	}
 	tmpl, err := template.New("").Funcs(funcs).ParseFS(templatesFS, "templates/*.html")
 	if err != nil {
@@ -77,7 +79,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("GET /static/", h.static)
 	mux.HandleFunc("GET /{$}", h.home)
 	mux.HandleFunc("GET /plans/{kind}/{period_start}", h.plan)
-	mux.HandleFunc("POST /plans/{kind}/{period_start}/revisions", h.savePlan)
 }
 
 func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
@@ -100,30 +101,6 @@ func (h *Handler) plan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.renderPlan(w, view)
-}
-
-func (h *Handler) savePlan(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form", http.StatusBadRequest)
-		return
-	}
-	kind := r.PathValue("kind")
-	periodStart := r.PathValue("period_start")
-	if err := h.app.SavePlan(r.Context(), SavePlanInput{
-		Kind:            kind,
-		PeriodStart:     periodStart,
-		SummaryMarkdown: r.FormValue("summary_markdown"),
-		ContentMarkdown: r.FormValue("content_markdown"),
-	}); err != nil {
-		h.writeApplicationError(w, err)
-		return
-	}
-	http.Redirect(
-		w,
-		r,
-		fmt.Sprintf("/plans/%s/%s#plan", kind, periodStart),
-		http.StatusSeeOther,
-	)
 }
 
 func (h *Handler) renderPlan(w http.ResponseWriter, view View) {
