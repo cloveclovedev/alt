@@ -1,11 +1,10 @@
 # Daily Run Design
 
 - Status: Draft
-- Date: 2026-07-29
 - Intended delivery: a separate pull request after daily planning
 - Depends on:
-  - `2026-07-29-routine-design.md`
-  - `2026-07-29-daily-planning-design.md`
+  - `routine.md`
+  - `daily-planning.md`
 
 ## Why this document is a draft
 
@@ -200,3 +199,11 @@ The completion screen should be small and useful:
 - The final normalized persistence model for heterogeneous run items.
 
 These questions are intentionally deferred to the daily-run pull request.
+
+## Decision log
+
+This is a living design document. Each entry records a change to the design;
+the sections above always describe the current intended design.
+
+- 2026-07-29 — Initial draft, to be refined after the confirmed-plan experience
+  is used in practice.

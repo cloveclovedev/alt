@@ -1,8 +1,7 @@
 # Routine Management Design
 
 - Status: Proposed
-- Date: 2026-07-29
-- Depends on: `2026-07-27-go-web-app-design.md`
+- Depends on: `go-web-app.md`
 
 ## Context
 
@@ -279,3 +278,11 @@ constraints protect stored data independently.
 - Daily-run completion will reuse the same completion service.
 - Weekly and monthly planning may consume the same status model without forcing
   their plan structures to match daily planning.
+
+## Decision log
+
+This is a living design document. Each entry records a change to the design;
+the sections above always describe the current intended design.
+
+- 2026-07-29 — Initial routine management design. Implemented in
+  [#42](https://github.com/cloveclovedev/alt/pull/42).
