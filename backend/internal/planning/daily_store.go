@@ -299,35 +299,6 @@ func (s *Store) SaveDailyPreview(ctx context.Context, userID, sessionID, modelID
 	return nil
 }
 
-// RecordGeneration stores non-content provider metadata for diagnostics.
-func (s *Store) RecordGeneration(ctx context.Context, sessionID, purpose, modelID, generationID, promptVersion, status string, promptTokens, completionTokens int) error {
-	if _, err := s.pool.Exec(ctx, `
-		INSERT INTO ai_generations (
-			session_id, purpose, model_id, provider_generation_id, prompt_version,
-			prompt_tokens, completion_tokens, status
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, sessionID, purpose, modelID, generationID, promptVersion, promptTokens, completionTokens, status); err != nil {
-		return fmt.Errorf("record AI generation: %w", err)
-	}
-	return nil
-}
-
-// LoadModelAssignment returns the selected model for one owned planning purpose.
-func (s *Store) LoadModelAssignment(ctx context.Context, userID, purpose string) (string, error) {
-	var modelID string
-	err := s.pool.QueryRow(ctx, `
-		SELECT model_id FROM ai_model_assignments
-		WHERE user_id = $1 AND purpose = $2
-	`, userID, purpose).Scan(&modelID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", fmt.Errorf("%w: choose a ZDR-compatible daily planning model in AI settings", ErrNotFound)
-	}
-	if err != nil {
-		return "", fmt.Errorf("load AI model assignment: %w", err)
-	}
-	return modelID, nil
-}
-
 // ConfirmDailySession creates the next immutable revision and removes working content.
 // The service validates the proposal against saved context before calling this method;
 // ownership checks here protect the routine foreign references at the write boundary.

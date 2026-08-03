@@ -32,12 +32,3 @@ type CalendarSource struct {
 	PlanningInstructions string
 	Timezone             string
 }
-
-// AIModel is the small policy-relevant view of an OpenRouter model endpoint.
-type AIModel struct {
-	ID                       string
-	Name                     string
-	SupportsTextChat         bool
-	SupportsStructuredOutput bool
-	HasZDREndpoint           bool
-}

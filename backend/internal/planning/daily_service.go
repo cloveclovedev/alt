@@ -2,12 +2,15 @@ package planning
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/cloveclovedev/alt/internal/ai"
 )
 
-const dailyPlanningPurpose = "daily_planning"
 const dailyPlanningPromptVersion = "daily-planning-v4"
 
 // DailyContextGatherer owns deterministic external I/O for planning evidence.
@@ -15,19 +18,11 @@ type DailyContextGatherer interface {
 	GatherDailyPlanningContext(context.Context, string, time.Time, *time.Location) DailyPlanningContext
 }
 
-// DailyAI is the provider-neutral model boundary used by a planning session.
-// Every turn returns one structured proposal: a natural-language reply plus the
-// current draft of the plan.
+// DailyAI is the inference boundary used by a planning session. planning builds
+// the prompt messages and structured-output schema; internal/ai resolves the
+// assigned model, enforces ZDR, runs the completion, and records usage metadata.
 type DailyAI interface {
-	Propose(context.Context, string, DailyPlanningContext, []DailyPlanningMessage) (AIGeneration, DailyPlanProposal, error)
-}
-
-// AIGeneration carries a completed response only in memory; stores persist its metadata alone.
-type AIGeneration struct {
-	ID               string
-	PromptTokens     int
-	CompletionTokens int
-	Response         string
+	Generate(ctx context.Context, purpose, promptVersion string, messages []ai.Message, schema *ai.Schema) (ai.Completion, error)
 }
 
 // DailyService owns the state machine for a daily planning conversation.
@@ -181,23 +176,25 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 		len(session.Messages) == 0 || session.Messages[len(session.Messages)-1].Role != MessageRoleUser {
 		return DailyPlanningView{}, ErrInvalidSessionState
 	}
-	modelID, err := s.store.LoadModelAssignment(ctx, s.userID, dailyPlanningPurpose)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
 	if s.ai == nil {
 		return DailyPlanningView{}, fmt.Errorf("daily planning AI is not configured")
 	}
-	generation, proposal, err := s.ai.Propose(ctx, modelID, session.Context, session.Messages)
+	messages, err := buildDailyMessages(session.Context, session.Messages)
 	if err != nil {
-		_ = s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, "", dailyPlanningPromptVersion, "failed", 0, 0)
+		return DailyPlanningView{}, err
+	}
+	completion, err := s.ai.Generate(ctx, ai.PurposeDailyPlanning, dailyPlanningPromptVersion, messages, &ai.Schema{Name: "daily_plan_proposal", Body: dailyPlanProposalSchema()})
+	if err != nil {
+		// Surface an unconfigured model as an actionable user error (400), matching
+		// the pre-refactor behavior, rather than a generic upstream failure (502).
+		if errors.Is(err, ai.ErrNoModelAssigned) {
+			return DailyPlanningView{}, fmt.Errorf("%w: choose a ZDR-compatible daily planning model in AI settings", ErrNotFound)
+		}
 		return DailyPlanningView{}, fmt.Errorf("request daily planning model: %w", err)
 	}
-	if strings.TrimSpace(generation.ID) == "" {
-		generation.ID = "unavailable"
-	}
-	if err := s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, generation.ID, dailyPlanningPromptVersion, "succeeded", generation.PromptTokens, generation.CompletionTokens); err != nil {
-		return DailyPlanningView{}, err
+	var proposal DailyPlanProposal
+	if err := json.Unmarshal([]byte(completion.Content), &proposal); err != nil {
+		return DailyPlanningView{}, fmt.Errorf("decode structured daily plan proposal: %w", err)
 	}
 	// The assistant's conversational reply is the saved chat message; the rest of
 	// the proposal becomes the current unconfirmed preview.
@@ -208,7 +205,7 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 	if err := s.store.AppendDailyMessage(ctx, s.userID, sessionID, MessageRoleAssistant, message); err != nil {
 		return DailyPlanningView{}, err
 	}
-	if err := s.store.SaveDailyPreview(ctx, s.userID, sessionID, modelID, dailyPlanningPromptVersion, sanitizeProposal(proposal, session.Context)); err != nil {
+	if err := s.store.SaveDailyPreview(ctx, s.userID, sessionID, completion.Model, dailyPlanningPromptVersion, sanitizeProposal(proposal, session.Context)); err != nil {
 		return DailyPlanningView{}, err
 	}
 	updated, err := s.store.LoadDailySession(ctx, s.userID, sessionID)

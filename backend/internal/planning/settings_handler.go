@@ -2,7 +2,6 @@ package planning
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -14,32 +13,24 @@ type calendarSettingsClient interface {
 	AuthorizationURL(context.Context, string) (string, error)
 	CompleteAuthorization(context.Context, string, string, string) error
 }
-type settingsAIClient interface {
-	ListCompatibleModels(context.Context) ([]AIModel, error)
-}
 
-// SettingsHandler configures the three external inputs without exposing credentials to the browser.
+// SettingsHandler configures the calendar and GitHub inputs without exposing
+// credentials to the browser. AI model selection lives in internal/ai.
 type SettingsHandler struct {
 	store    *Store
 	userID   string
 	github   *GitHubClient
 	calendar calendarSettingsClient
-	ai       settingsAIClient
 	logger   *slog.Logger
 	tmpl     *template.Template
 }
 
-type aiSettingsView struct {
-	Models          []AIModel
-	SelectedModelID string
-}
-
-func NewSettingsHandler(store *Store, userID string, github *GitHubClient, calendar calendarSettingsClient, ai settingsAIClient, logger *slog.Logger) (*SettingsHandler, error) {
+func NewSettingsHandler(store *Store, userID string, github *GitHubClient, calendar calendarSettingsClient, logger *slog.Logger) (*SettingsHandler, error) {
 	tmpl, err := template.New("settings").Parse(settingsTemplate)
 	if err != nil {
 		return nil, err
 	}
-	return &SettingsHandler{store: store, userID: userID, github: github, calendar: calendar, ai: ai, logger: logger, tmpl: tmpl}, nil
+	return &SettingsHandler{store: store, userID: userID, github: github, calendar: calendar, logger: logger, tmpl: tmpl}, nil
 }
 
 func (h *SettingsHandler) Register(mux *http.ServeMux) {
@@ -50,8 +41,6 @@ func (h *SettingsHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /settings/calendar/callback", h.calendarCallback)
 	mux.HandleFunc("GET /settings/github", h.githubPage)
 	mux.HandleFunc("POST /settings/github", h.saveGithub)
-	mux.HandleFunc("GET /settings/ai", h.aiPage)
-	mux.HandleFunc("POST /settings/ai", h.saveAI)
 }
 
 func (h *SettingsHandler) calendarPage(w http.ResponseWriter, r *http.Request) {
@@ -135,53 +124,6 @@ func (h *SettingsHandler) saveGithub(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, "/settings/github", http.StatusSeeOther)
 }
-func (h *SettingsHandler) aiPage(w http.ResponseWriter, r *http.Request) {
-	if h.ai == nil {
-		http.Error(w, "OpenRouter is not configured", http.StatusServiceUnavailable)
-		return
-	}
-	models, err := h.ai.ListCompatibleModels(r.Context())
-	if err != nil {
-		h.fail(w, err)
-		return
-	}
-	selected, err := h.store.LoadModelAssignment(r.Context(), h.userID, dailyPlanningPurpose)
-	if err != nil && !errors.Is(err, ErrNotFound) {
-		h.fail(w, err)
-		return
-	}
-	if errors.Is(err, ErrNotFound) {
-		selected = ""
-	}
-	h.render(w, "AI settings", aiSettingsView{Models: models, SelectedModelID: selected}, "")
-}
-func (h *SettingsHandler) saveAI(w http.ResponseWriter, r *http.Request) {
-	if h.ai == nil {
-		http.Error(w, "OpenRouter is not configured", http.StatusServiceUnavailable)
-		return
-	}
-	selected := strings.TrimSpace(formValue(r, "model_id"))
-	models, err := h.ai.ListCompatibleModels(r.Context())
-	if err == nil {
-		valid := false
-		for _, model := range models {
-			if model.ID == selected {
-				valid = true
-			}
-		}
-		if !valid {
-			err = fmt.Errorf("%w: choose a ZDR-compatible model", ErrInvalidInput)
-		}
-	}
-	if err == nil {
-		err = h.store.SaveModelAssignment(r.Context(), h.userID, dailyPlanningPurpose, selected)
-	}
-	if err != nil {
-		h.fail(w, err)
-		return
-	}
-	http.Redirect(w, r, "/settings/ai", http.StatusSeeOther)
-}
 func (h *SettingsHandler) render(w http.ResponseWriter, title string, data any, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := h.tmpl.Execute(w, map[string]any{"Title": title, "Data": data, "Message": message}); err != nil {
@@ -193,4 +135,4 @@ func (h *SettingsHandler) fail(w http.ResponseWriter, err error) {
 	http.Error(w, "Settings request failed", http.StatusBadGateway)
 }
 
-const settingsTemplate = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.Title}} · alt</title><link rel="stylesheet" href="/static/app.css"></head><body><header class="site-header"><a class="brand" href="/" aria-label="alt home">alt</a><p>Settings</p><nav class="header-nav"><a href="/settings/calendar">Calendar</a><a href="/settings/github">GitHub</a><a href="/settings/ai">AI</a></nav></header><main><h1>{{.Title}}</h1>{{if eq .Title "Calendar settings"}}<p><a class="button-link" href="/settings/calendar/connect">Connect Google Calendar</a></p><form action="/settings/calendar/sources" method="post">{{range .Data}}<fieldset><legend>{{.DisplayName}}</legend><label><input type="checkbox" name="enabled_{{.ID}}" {{if .Enabled}}checked{{end}}> Enable for planning</label><label>Role <select name="role_{{.ID}}"><option value="commitment" {{if eq .Role "commitment"}}selected{{end}}>Commitment</option><option value="optional" {{if eq .Role "optional"}}selected{{end}}>Optional</option><option value="context" {{if eq .Role "context"}}selected{{end}}>Context</option></select></label><label>Instructions <textarea name="instructions_{{.ID}}">{{.PlanningInstructions}}</textarea></label></fieldset>{{end}}<button>Save Calendar sources</button></form>{{else if eq .Title "GitHub settings"}}<form action="/settings/github" method="post"><label>Owner <input name="owner" required></label><label>Repository <input name="name" required></label><label>Planning instructions <textarea name="planning_instructions"></textarea></label><button>Add public repository</button></form><ul>{{range .Data}}<li>{{.Owner}}/{{.Name}}</li>{{end}}</ul>{{else}}{{if .Data.SelectedModelID}}<p>Current model: <code>{{.Data.SelectedModelID}}</code></p>{{else}}<p class="empty">No daily planning model has been selected.</p>{{end}}<form action="/settings/ai" method="post"><label>Daily planning model <select name="model_id">{{range .Data.Models}}<option value="{{.ID}}" {{if eq .ID $.Data.SelectedModelID}}selected{{end}}>{{.Name}} ({{.ID}})</option>{{end}}</select></label><button>Save model</button></form>{{end}}</main></body></html>`
+const settingsTemplate = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.Title}} · alt</title><link rel="stylesheet" href="/static/app.css"></head><body><header class="site-header"><a class="brand" href="/" aria-label="alt home">alt</a><p>Settings</p><nav class="header-nav"><a href="/settings/calendar">Calendar</a><a href="/settings/github">GitHub</a><a href="/settings/ai">AI</a></nav></header><main><h1>{{.Title}}</h1>{{if eq .Title "Calendar settings"}}<p><a class="button-link" href="/settings/calendar/connect">Connect Google Calendar</a></p><form action="/settings/calendar/sources" method="post">{{range .Data}}<fieldset><legend>{{.DisplayName}}</legend><label><input type="checkbox" name="enabled_{{.ID}}" {{if .Enabled}}checked{{end}}> Enable for planning</label><label>Role <select name="role_{{.ID}}"><option value="commitment" {{if eq .Role "commitment"}}selected{{end}}>Commitment</option><option value="optional" {{if eq .Role "optional"}}selected{{end}}>Optional</option><option value="context" {{if eq .Role "context"}}selected{{end}}>Context</option></select></label><label>Instructions <textarea name="instructions_{{.ID}}">{{.PlanningInstructions}}</textarea></label></fieldset>{{end}}<button>Save Calendar sources</button></form>{{else}}<form action="/settings/github" method="post"><label>Owner <input name="owner" required></label><label>Repository <input name="name" required></label><label>Planning instructions <textarea name="planning_instructions"></textarea></label><button>Add public repository</button></form><ul>{{range .Data}}<li>{{.Owner}}/{{.Name}}</li>{{end}}</ul>{{end}}</main></body></html>`

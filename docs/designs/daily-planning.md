@@ -514,7 +514,14 @@ routines. Only routines explicitly confirmed by the user become
 
 ## AI provider and model selection
 
-OpenRouter is the only inference adapter in the MVP.
+Inference is provided by the shared AI foundation, not by planning itself: the
+`platform/openrouter` adapter owns transport, ZDR policy, and capability
+discovery, and the `internal/ai` foundational feature owns purpose-based model
+assignment, usage metadata, ZDR enforcement, and the `/settings/ai` page. Planning
+builds the prompt and structured-output schema and calls `internal/ai`; it no
+longer contains an OpenRouter client (extracted in
+[#72](https://github.com/cloveclovedev/alt/issues/72); see
+`nutrition-tracking.md`). OpenRouter is the only inference adapter in the MVP.
 
 The API key is an application secret injected at runtime. It is not stored in
 PostgreSQL or accepted through the web application.
@@ -568,12 +575,14 @@ level as defense in depth.
 ## Usage metadata
 
 Content is removed after finalization, but request metadata is retained for
-cost and reliability diagnosis:
+cost and reliability diagnosis. `ai_generations` is owned by `internal/ai` and is
+feature-neutral: it is scoped to `user_id` (not a planning `session_id`) so any
+feature's generations share one usage table.
 
 ```text
 ai_generations
 id
-session_id
+user_id
 purpose
 model_id
 provider_generation_id
@@ -737,3 +746,12 @@ the sections above always describe the current intended design.
   content on the home card and confirmed-plan view. Advanced the prompt
   version accordingly. Tracked in
   [#66](https://github.com/cloveclovedev/alt/issues/66).
+- 2026-08-03 — Extracted the inference stack from `planning` into the shared AI
+  foundation: `platform/openrouter` (transport, ZDR policy, capability discovery
+  including image input) and `internal/ai` (purpose-based model assignment, ZDR
+  enforcement, `/settings/ai`, and usage metadata). Planning now builds the prompt
+  and schema and calls `internal/ai`; it no longer holds an OpenRouter client or
+  the AI tables. `ai_generations` was made feature-neutral by replacing its
+  planning `session_id` foreign key with a `user_id` foreign key, so any feature's
+  usage metadata shares one table; existing rows are backfilled from the session's
+  user. Tracked in [#72](https://github.com/cloveclovedev/alt/issues/72).

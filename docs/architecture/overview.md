@@ -44,6 +44,10 @@ backend/
     │   ├── database/
     │   ├── httpserver/
     │   └── logging/
+    ├── platform/            shared, provider-specific integrations
+    │   └── openrouter/      OpenRouter transport, ZDR policy, capability discovery
+    ├── ai/                  shared inference foundation: purpose-based model
+    │                        assignment, ZDR enforcement, usage metadata, /settings/ai
     ├── identity/            application users and local bootstrap
     ├── planning/            plans, daily sessions, and source adapters
     └── routine/             routine definitions and completion events
@@ -51,12 +55,15 @@ backend/
 
 Feature services own business rules and orchestration. HTTP handlers translate
 requests and responses. Stores own PostgreSQL access. External provider
-responses are normalized into application-owned planning models before they
-reach planning rules.
+responses are normalized into application-owned models before they reach feature
+rules.
 
-Provider integrations currently used only by daily planning remain inside the
-`planning` feature. A provider-specific integration moves to
-`internal/platform/` only when it becomes shared across features.
+`ai` is a foundational feature (a peer of `identity`) that any feature depends on
+for inference without importing another feature. It sits in front of the
+`platform/openrouter` adapter, which stops OpenRouter response DTOs at the
+boundary. A provider integration used by only one feature stays inside that
+feature; it moves to `internal/platform/` once it becomes shared, as OpenRouter
+did when nutrition and training joined daily planning as inference callers.
 
 ## Identity and authorization
 

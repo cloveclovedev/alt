@@ -330,3 +330,16 @@ sections above always describe the current intended design.
   interaction model; and planning integration separated as a port-based
   follow-up. Tracked in [#69](https://github.com/cloveclovedev/alt/issues/69);
   follow-ups #72–#82.
+- 2026-08-03 — Implemented the shared AI foundation (#72), the prerequisite for
+  the nutrition MVP. Added the `platform/openrouter` adapter (transport, ZDR
+  provider policy, capability discovery extended with image-input modality, a
+  generic `Complete`) and the `internal/ai` foundational feature (purpose-based
+  model assignment, ZDR enforcement, per-purpose capability filtering on
+  `/settings/ai`, and usage metadata). Registered the `daily_planning`,
+  `nutrition_logging` (vision), and `nutrition_coaching` purposes; the logging
+  purpose only offers image-capable ZDR models. Refactored `planning` to consume
+  the foundation, removing its in-package OpenRouter client and AI tables. Made
+  `ai_generations` feature-neutral by replacing its planning `session_id` foreign
+  key with a `user_id` foreign key (backfilled from the referencing session), so
+  any feature's generations share one usage table. Tracked in
+  [#72](https://github.com/cloveclovedev/alt/issues/72).
