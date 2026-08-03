@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -58,6 +59,13 @@ func (s *Service) Generate(ctx context.Context, purpose, promptVersion string, m
 	if err != nil {
 		s.record(ctx, purpose, modelID, promptVersion, Usage{}, "failed")
 		return Completion{}, err
+	}
+	// A structured request that returns malformed JSON is a failed generation, not
+	// a success the caller happens to reject later: record it as failed so usage
+	// metadata stays accurate. Valid-but-wrong-shaped JSON is the caller's concern.
+	if schema != nil && !json.Valid([]byte(completion.Content)) {
+		s.record(ctx, purpose, modelID, promptVersion, completion.Usage, "failed")
+		return Completion{}, fmt.Errorf("provider returned a malformed structured response")
 	}
 	if err := s.store.RecordGeneration(ctx, s.generation(purpose, modelID, promptVersion, completion.Usage, "succeeded")); err != nil {
 		return Completion{}, err

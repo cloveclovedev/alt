@@ -123,6 +123,41 @@ func TestGenerateRecordsFailureOnProviderError(t *testing.T) {
 	}
 }
 
+func TestGenerateRecordsMalformedStructuredResponseAsFailure(t *testing.T) {
+	// A structured request whose response is not valid JSON must be recorded as a
+	// failure, not a success the caller silently rejects later.
+	fp := &fakeProvider{models: []Model{zdrTextModel("openai/model")}, completion: Completion{Content: "{not json", Model: "openai/model", Usage: Usage{PromptTokens: 7}}}
+	fs := newFakeStore()
+	fs.assignments["user-1|"+PurposeDailyPlanning] = "openai/model"
+	service := NewService(fs, fp, "user-1")
+
+	_, err := service.Generate(context.Background(), PurposeDailyPlanning, "v1", nil, &Schema{Name: "s", Body: map[string]any{"type": "object"}})
+	if err == nil {
+		t.Fatal("expected an error for a malformed structured response")
+	}
+	if len(fs.generations) != 1 || fs.generations[0].Status != "failed" {
+		t.Fatalf("expected one failed generation, got %+v", fs.generations)
+	}
+	if fs.generations[0].PromptTokens != 7 {
+		t.Fatalf("usage should still be recorded on a malformed response: %+v", fs.generations[0])
+	}
+}
+
+func TestGenerateAllowsMalformedResponseWhenNoSchema(t *testing.T) {
+	// Without a schema the content is free-form; it is not validated as JSON.
+	fp := &fakeProvider{models: []Model{zdrTextModel("openai/model")}, completion: Completion{Content: "plain text", Model: "openai/model"}}
+	fs := newFakeStore()
+	fs.assignments["user-1|"+PurposeDailyPlanning] = "openai/model"
+	service := NewService(fs, fp, "user-1")
+
+	if _, err := service.Generate(context.Background(), PurposeDailyPlanning, "v1", nil, nil); err != nil {
+		t.Fatalf("unexpected error without a schema: %v", err)
+	}
+	if len(fs.generations) != 1 || fs.generations[0].Status != "succeeded" {
+		t.Fatalf("expected one succeeded generation, got %+v", fs.generations)
+	}
+}
+
 func TestGenerateRejectsIncompatibleAssignedModel(t *testing.T) {
 	// The assigned model lost its ZDR endpoint since assignment.
 	stale := zdrTextModel("openai/model")
