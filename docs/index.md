@@ -27,6 +27,7 @@ for the system as it exists now.
 - [Daily Planning Design](designs/daily-planning.md)
 - [Daily Run Design](designs/daily-run.md)
 - [Routine Management Design](designs/routine.md)
+- [Nutrition Tracking Design](designs/nutrition-tracking.md)
 
 ## Work tracking
 
