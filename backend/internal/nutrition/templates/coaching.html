@@ -1,0 +1,24 @@
+{{define "coaching.html"}}<section id="coaching">
+  <h2>Coaching</h2>
+  {{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+  {{if .Coaching}}
+  <div class="coaching-body">
+    <h3>Evaluation</h3>
+    {{markdown .Coaching.EvaluationMarkdown}}
+    <h3>Suggestion</h3>
+    {{markdown .Coaching.SuggestionMarkdown}}
+    <p class="meta">Generated {{.Coaching.GeneratedAt.Format "2006-01-02 15:04"}} · {{.Coaching.ModelID}}</p>
+  </div>
+  {{else}}
+  <p class="empty">No coaching generated for today yet.</p>
+  {{end}}
+  {{if .AIEnabled}}
+  <form hx-post="/nutrition/coaching" action="/nutrition/coaching" method="post"
+        hx-target="#coaching" hx-swap="outerHTML" hx-disabled-elt="find button">
+    <button>{{if .Coaching}}Regenerate{{else}}Generate coaching{{end}}</button>
+    <span class="htmx-indicator">Generating…</span>
+  </form>
+  {{else}}
+  <p class="empty">Assign a ZDR model to nutrition coaching in <a href="/settings/ai">AI settings</a> to enable coaching.</p>
+  {{end}}
+</section>{{end}}

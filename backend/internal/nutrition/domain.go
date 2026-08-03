@@ -161,6 +161,18 @@ type TargetInput struct {
 	Rationale    string
 }
 
+// Coaching is the AI-generated commentary for one day: a read-only evaluation of
+// achievement against the target and an adjustment suggestion. It is a
+// regenerable derivative cached per day, not an immutable revision.
+type Coaching struct {
+	Date               time.Time
+	EvaluationMarkdown string
+	SuggestionMarkdown string
+	ModelID            string
+	PromptVersion      string
+	GeneratedAt        time.Time
+}
+
 // Candidate is a proposed entry produced by AI parsing (photo or text). It is
 // never stored on its own: the user reviews and edits candidates, and only on
 // confirmation are they written as entries. This keeps mutation entirely with the

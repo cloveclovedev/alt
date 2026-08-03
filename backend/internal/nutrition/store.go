@@ -306,6 +306,52 @@ func (s *Store) ApplicableTarget(ctx context.Context, userID string, date time.T
 	return &target, nil
 }
 
+// --- Coaching ---
+
+// LoadCoaching returns the cached coaching for a date, or nil when none exists.
+func (s *Store) LoadCoaching(ctx context.Context, userID string, date time.Time) (*Coaching, error) {
+	var coaching Coaching
+	err := s.pool.QueryRow(ctx, `
+		SELECT coached_date, evaluation_markdown, suggestion_markdown, model_id, prompt_version, updated_at
+		FROM nutrition_coaching
+		WHERE user_id = $1 AND coached_date = $2
+	`, userID, date.Format(time.DateOnly)).Scan(
+		&coaching.Date, &coaching.EvaluationMarkdown, &coaching.SuggestionMarkdown,
+		&coaching.ModelID, &coaching.PromptVersion, &coaching.GeneratedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load nutrition coaching: %w", err)
+	}
+	return &coaching, nil
+}
+
+// UpsertCoaching stores generated coaching for a date, replacing any existing
+// commentary for that day (regeneration).
+func (s *Store) UpsertCoaching(ctx context.Context, userID string, date time.Time, coaching Coaching) (Coaching, error) {
+	var stored Coaching
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO nutrition_coaching (user_id, coached_date, evaluation_markdown, suggestion_markdown, model_id, prompt_version)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (user_id, coached_date) DO UPDATE SET
+			evaluation_markdown = EXCLUDED.evaluation_markdown,
+			suggestion_markdown = EXCLUDED.suggestion_markdown,
+			model_id = EXCLUDED.model_id,
+			prompt_version = EXCLUDED.prompt_version,
+			updated_at = now()
+		RETURNING coached_date, evaluation_markdown, suggestion_markdown, model_id, prompt_version, updated_at
+	`, userID, date.Format(time.DateOnly), coaching.EvaluationMarkdown, coaching.SuggestionMarkdown, coaching.ModelID, coaching.PromptVersion).Scan(
+		&stored.Date, &stored.EvaluationMarkdown, &stored.SuggestionMarkdown,
+		&stored.ModelID, &stored.PromptVersion, &stored.GeneratedAt,
+	)
+	if err != nil {
+		return Coaching{}, fmt.Errorf("upsert nutrition coaching: %w", err)
+	}
+	return stored, nil
+}
+
 // --- Summaries ---
 
 // RangeTotals returns summed intake per local date over [start, end], keyed by

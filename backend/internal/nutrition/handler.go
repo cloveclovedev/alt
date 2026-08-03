@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cloveclovedev/alt/internal/core/markdown"
 )
 
 //go:embed templates/*.html
@@ -30,7 +32,8 @@ type Handler struct {
 // NewHandler parses the embedded templates and constructs the handler.
 func NewHandler(service *Service, logger *slog.Logger) (*Handler, error) {
 	tmpl, err := template.New("nutrition").Funcs(template.FuncMap{
-		"title": titleCase,
+		"title":    titleCase,
+		"markdown": markdown.ToHTML,
 	}).ParseFS(templatesFS, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse nutrition templates: %w", err)
@@ -46,6 +49,55 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /nutrition/entries/parse-text", h.parseText)
 	mux.HandleFunc("POST /nutrition/entries/parse-photo", h.parsePhoto)
 	mux.HandleFunc("POST /nutrition/entries/confirm", h.confirm)
+	mux.HandleFunc("GET /nutrition/coaching", h.coachingPage)
+	mux.HandleFunc("POST /nutrition/coaching", h.generateCoaching)
+}
+
+// coachingView is the model for the coaching card and its standalone page.
+type coachingView struct {
+	Date      string
+	Coaching  *Coaching
+	AIEnabled bool
+	Message   string
+}
+
+func (h *Handler) coachingPage(w http.ResponseWriter, r *http.Request) {
+	date := h.service.LocalToday()
+	coaching, err := h.service.Coaching(r.Context(), date)
+	if err != nil {
+		h.fail(w, err)
+		return
+	}
+	h.renderPage(w, "coaching_page.html", coachingView{
+		Date:      date.Format(time.DateOnly),
+		Coaching:  coaching,
+		AIEnabled: h.service.ai != nil,
+	})
+}
+
+func (h *Handler) generateCoaching(w http.ResponseWriter, r *http.Request) {
+	date := h.service.LocalToday()
+	coaching, err := h.service.GenerateCoaching(r.Context(), date)
+	if err != nil {
+		if errors.Is(err, ErrAIUnavailable) {
+			h.renderCoaching(w, r, coachingView{Date: date.Format(time.DateOnly), Message: strings.TrimPrefix(err.Error(), ErrAIUnavailable.Error()+": ")})
+			return
+		}
+		h.fail(w, err)
+		return
+	}
+	h.renderCoaching(w, r, coachingView{Date: date.Format(time.DateOnly), Coaching: &coaching, AIEnabled: true})
+}
+
+// renderCoaching returns the coaching card fragment for an HTMX request and the
+// full page otherwise, preserving the no-JavaScript fallback.
+func (h *Handler) renderCoaching(w http.ResponseWriter, r *http.Request, view coachingView) {
+	view.AIEnabled = h.service.ai != nil
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderFragment(w, "coaching.html", view)
+		return
+	}
+	h.renderPage(w, "coaching_page.html", view)
 }
 
 // newFormView is the add-entry page model.

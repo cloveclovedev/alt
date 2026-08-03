@@ -222,3 +222,61 @@ table "nutrition_targets" {
     columns = [column.user_id, column.effective_on]
   }
 }
+
+# On-demand daily coaching, cached per (user_id, coached_date). This is a
+# regenerable derivative of the day's entries and target, not an immutable
+# revision: regenerating replaces the row. No prompt or response content is stored
+# beyond this cache.
+table "nutrition_coaching" {
+  schema = schema.public
+
+  column "id" {
+    type    = uuid
+    default = sql("gen_random_uuid()")
+  }
+  column "user_id" {
+    type = uuid
+    null = false
+  }
+  column "coached_date" {
+    type = date
+    null = false
+  }
+  column "evaluation_markdown" {
+    type = text
+    null = false
+  }
+  column "suggestion_markdown" {
+    type = text
+    null = false
+  }
+  column "model_id" {
+    type = text
+    null = false
+  }
+  column "prompt_version" {
+    type = text
+    null = false
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+  column "updated_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+  foreign_key "nutrition_coaching_user_id_fkey" {
+    columns     = [column.user_id]
+    ref_columns = [table.users.column.id]
+    on_delete   = CASCADE
+  }
+  index "nutrition_coaching_user_coached_date_key" {
+    unique  = true
+    columns = [column.user_id, column.coached_date]
+  }
+}

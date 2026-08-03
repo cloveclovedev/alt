@@ -117,6 +117,34 @@ func TestStoreNutritionFlow(t *testing.T) {
 	if day.CaloriesKcal != 420 || day.ProteinG != 35.0 {
 		t.Fatalf("daily totals = %+v, want {420, 35.0}", day)
 	}
+
+	// Coaching cache: absent, then upsert, then regenerate replaces in place.
+	if cached, err := store.LoadCoaching(ctx, userID, loggedDate); err != nil || cached != nil {
+		t.Fatalf("expected no coaching cached, got %+v, %v", cached, err)
+	}
+	if _, err := store.UpsertCoaching(ctx, userID, loggedDate, Coaching{
+		EvaluationMarkdown: "On track.", SuggestionMarkdown: "Add protein at dinner.",
+		ModelID: "openai/model", PromptVersion: "nutrition-coaching-v1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	regenerated, err := store.UpsertCoaching(ctx, userID, loggedDate, Coaching{
+		EvaluationMarkdown: "Slightly under target.", SuggestionMarkdown: "A snack would help.",
+		ModelID: "openai/model", PromptVersion: "nutrition-coaching-v1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if regenerated.EvaluationMarkdown != "Slightly under target." {
+		t.Fatalf("regeneration should replace commentary, got %+v", regenerated)
+	}
+	var count int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM nutrition_coaching WHERE user_id = $1 AND coached_date = $2`, userID, loggedDate.Format(time.DateOnly)).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("regeneration must replace in place, not append: %d rows", count)
+	}
 }
 
 func assertTarget(t *testing.T, store *Store, ctx context.Context, userID, day string, wantCalories int) {
