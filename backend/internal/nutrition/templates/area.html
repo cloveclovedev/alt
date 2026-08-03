@@ -45,12 +45,7 @@
 
 {{define "summary"}}<section class="summary">
   <h2>Totals vs target</h2>
-  {{if .HasTarget}}
-  <p>Calories: {{.Calories.Actual}} / {{.Calories.Target}} kcal ({{.Calories.Percent}}%)</p>
-  <p>Protein: {{.Protein.Actual}} / {{.Protein.Target}} g ({{.Protein.Percent}}%)</p>
-  {{else}}
-  <p>Calories: {{.Calories.Actual}} kcal</p>
-  <p>Protein: {{.Protein.Actual}} g</p>
-  <p class="empty">No target set. <a href="/nutrition/targets">Set a target</a>.</p>
-  {{end}}
+  {{if .Calories.HasTarget}}<p>Calories: {{.Calories.Actual}} / {{.Calories.Target}} kcal ({{.Calories.Percent}}%)</p>{{else}}<p>Calories: {{.Calories.Actual}} kcal</p>{{end}}
+  {{if .Protein.HasTarget}}<p>Protein: {{.Protein.Actual}} / {{.Protein.Target}} g ({{.Protein.Percent}}%)</p>{{else}}<p>Protein: {{.Protein.Actual}} g</p>{{end}}
+  {{if not .HasTarget}}<p class="empty">No target set. <a href="/nutrition/targets">Set a target</a>.</p>{{end}}
 </section>{{end}}

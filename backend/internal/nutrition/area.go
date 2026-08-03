@@ -128,18 +128,25 @@ func (h *Handler) editEntryForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateEntry(w http.ResponseWriter, r *http.Request) {
+	// Preserve the entry's original logged date; the edit form does not change it,
+	// so editing a past day (or across midnight) must not move the intake to today.
+	existing, err := h.service.GetEntry(r.Context(), r.PathValue("id"))
+	if err != nil {
+		h.badRequest(w, err)
+		return
+	}
 	calories, protein, err := parseMetrics(r)
 	if err != nil {
 		h.badRequest(w, err)
 		return
 	}
 	input := EntryInput{
-		LoggedDate:   h.service.LocalToday(),
+		LoggedDate:   existing.LoggedDate,
 		MealType:     MealType(strings.TrimSpace(r.FormValue("meal_type"))),
 		Name:         r.FormValue("name"),
 		CaloriesKcal: calories,
 		ProteinG:     protein,
-		Source:       SourceManual,
+		Source:       existing.Source,
 	}
 	if err := h.service.UpdateEntry(r.Context(), r.PathValue("id"), input); err != nil {
 		h.badRequest(w, err)
