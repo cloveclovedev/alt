@@ -2,6 +2,7 @@ package nutrition
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
 )
@@ -73,6 +74,8 @@ func TestValidateCatalogInputRejectsBadValues(t *testing.T) {
 		"negative protein":  {Name: "Egg", CaloriesKcal: 100, ProteinG: -0.1},
 		"invalid kind":      {Name: "Egg", CaloriesKcal: 100, ProteinG: 5, Kind: CatalogKind("drink")},
 		"protein too large": {Name: "Egg", CaloriesKcal: 100, ProteinG: 1_000_000},
+		"protein NaN":       {Name: "Egg", CaloriesKcal: 100, ProteinG: math.NaN()},
+		"protein Inf":       {Name: "Egg", CaloriesKcal: 100, ProteinG: math.Inf(1)},
 	}
 	for name, input := range cases {
 		if _, err := service.validateCatalogInput(input); !errors.Is(err, ErrInvalidInput) {

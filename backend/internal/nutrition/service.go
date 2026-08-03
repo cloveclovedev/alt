@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -268,6 +269,11 @@ func validateName(name string) error {
 }
 
 func validateMetrics(calories int, protein float64) error {
+	// Reject NaN/Inf first: NaN fails every range comparison silently, and
+	// PostgreSQL numeric would accept it and poison SUM and trailing summaries.
+	if math.IsNaN(protein) || math.IsInf(protein, 0) {
+		return fmt.Errorf("%w: protein must be a finite number", ErrInvalidInput)
+	}
 	if calories < 0 || protein < 0 {
 		return fmt.Errorf("%w: calories and protein must not be negative", ErrInvalidInput)
 	}
