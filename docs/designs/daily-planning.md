@@ -729,3 +729,11 @@ the sections above always describe the current intended design.
   persisted completion table for action items (rejected as task-management
   scope creep, out of this design's non-goals). Tracked in
   [#64](https://github.com/cloveclovedev/alt/issues/64).
+- 2026-08-03 — Refined prompt shaping so action items are reserved for
+  free-form work not already captured by a selected GitHub issue, routine, or
+  calendar event, since the model frequently produced an action item that only
+  restated an already-selected issue (for example "Advance pepercheck #480"
+  alongside `pepercheck#480` under GitHub issues), reading as duplicated
+  content on the home card and confirmed-plan view. Advanced the prompt
+  version accordingly. Tracked in
+  [#66](https://github.com/cloveclovedev/alt/issues/66).
