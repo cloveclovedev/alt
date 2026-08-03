@@ -343,3 +343,14 @@ sections above always describe the current intended design.
   key with a `user_id` foreign key (backfilled from the referencing session), so
   any feature's generations share one usage table. Tracked in
   [#72](https://github.com/cloveclovedev/alt/issues/72).
+- 2026-08-03 — Implemented the nutrition schema and domain (#73): the
+  `nutrition_catalog`, `nutrition_entries`, and `nutrition_targets` tables and the
+  `internal/nutrition` domain, store, and service (entries CRUD, catalog
+  management, effective-dated targets, and daily and trailing-7-day summaries).
+  Decisions made during implementation: `calories_kcal` is `integer` and
+  `protein_g` is `numeric(6,1)` (read and summed as `float8` so pgx scans it into
+  a plain `float64`); targets carry a unique `(user_id, effective_on)` constraint
+  so re-setting a target for the same date replaces it via upsert rather than
+  adding an ambiguous second row; the trailing average divides by the full window
+  length, counting untracked days as zero. Tracked in
+  [#73](https://github.com/cloveclovedev/alt/issues/73).
