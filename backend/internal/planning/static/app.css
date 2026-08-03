@@ -462,21 +462,24 @@ button.secondary:hover {
 
 .component-list,
 .calendar-list {
-  display: grid;
-  gap: 0.3rem;
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding-left: 1.25rem;
+  list-style: disc;
 }
 
-.component-list li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: baseline;
+.component-list li,
+.calendar-list li {
+  margin: 0.25rem 0;
+  line-height: 1.5;
+}
+
+.component-list li::marker,
+.calendar-list li::marker {
+  color: var(--muted);
 }
 
 .component-list .meta {
+  margin-left: 0.35rem;
   color: var(--muted);
   font-size: 0.85rem;
 }

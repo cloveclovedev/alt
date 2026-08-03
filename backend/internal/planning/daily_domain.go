@@ -1,6 +1,9 @@
 package planning
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // DailySessionStatus identifies the lifecycle phase of a daily planning session.
 type DailySessionStatus string
@@ -229,8 +232,9 @@ type PlanCalendarEvent struct {
 }
 
 // previewComponents joins a proposal's selections against session context so the
-// reviewing preview can display titles, links, and times.
-func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, location *time.Location) PlanComponents {
+// draft can display titles, links, and times. Calendar events are not a model
+// choice: the plan date's events from context are shown as the day's constraints.
+func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, planDate time.Time, location *time.Location) PlanComponents {
 	components := PlanComponents{ActionItems: proposal.ActionItems}
 
 	issuesByKey := make(map[string]GitHubIssue, len(value.GitHub))
@@ -259,21 +263,87 @@ func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, l
 		}
 	}
 
-	eventsByKey := make(map[string]CalendarEvent, len(value.Calendar))
-	for _, event := range value.Calendar {
-		eventsByKey[calendarEventKey(event.CalendarSourceID, event.ExternalEventID)] = event
-	}
-	for _, selected := range proposal.CalendarEvents {
-		if event, ok := eventsByKey[calendarEventKey(selected.CalendarSourceID, selected.ExternalEventID)]; ok {
-			components.CalendarEvents = append(components.CalendarEvents, PlanCalendarEvent{
-				TimeLabel: calendarTimeLabel(event.AllDay, event.StartsAt, event.EndsAt, location),
-				Title:     event.Title,
-				Role:      event.Role,
-				HTMLURL:   event.HTMLURL,
-			})
-		}
+	for _, event := range todaysCalendarEvents(value.Calendar, planDate, location) {
+		components.CalendarEvents = append(components.CalendarEvents, PlanCalendarEvent{
+			TimeLabel: calendarTimeLabel(event.AllDay, event.StartsAt, event.EndsAt, location),
+			Title:     event.Title,
+			Role:      event.Role,
+			HTMLURL:   event.HTMLURL,
+		})
 	}
 	return components
+}
+
+// todaysCalendarEvents returns the context events that occur on the plan date,
+// in start order. Calendar events are the day's constraints, shown in full and
+// deterministically rather than selected by the model.
+func todaysCalendarEvents(events []CalendarEvent, planDate time.Time, location *time.Location) []CalendarEvent {
+	day := time.Date(planDate.Year(), planDate.Month(), planDate.Day(), 0, 0, 0, 0, location)
+	var out []CalendarEvent
+	for _, event := range events {
+		start, end, ok := eventDayRange(event, location)
+		if !ok {
+			continue
+		}
+		if !day.Before(start) && day.Before(end) {
+			out = append(out, event)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return calendarStart(out[i]).Before(calendarStart(out[j])) })
+	return out
+}
+
+// eventDayRange returns the [start, end) day range an event covers, where end is
+// exclusive. All-day end dates are already exclusive; timed events extend to the
+// day after their end.
+func eventDayRange(event CalendarEvent, location *time.Location) (start, end time.Time, ok bool) {
+	dayOf := func(t time.Time) time.Time {
+		t = t.In(location)
+		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, location)
+	}
+	if event.AllDay {
+		if event.StartDate == nil {
+			return time.Time{}, time.Time{}, false
+		}
+		start = dayOf(*event.StartDate)
+		if event.EndDate != nil {
+			end = dayOf(*event.EndDate)
+		}
+		if !end.After(start) {
+			end = start.AddDate(0, 0, 1)
+		}
+		return start, end, true
+	}
+	if event.StartsAt == nil {
+		return time.Time{}, time.Time{}, false
+	}
+	start = dayOf(*event.StartsAt)
+	if event.EndsAt != nil {
+		end = dayOf(*event.EndsAt).AddDate(0, 0, 1)
+	}
+	if !end.After(start) {
+		end = start.AddDate(0, 0, 1)
+	}
+	return start, end, true
+}
+
+func calendarStart(event CalendarEvent) time.Time {
+	if event.StartsAt != nil {
+		return *event.StartsAt
+	}
+	if event.StartDate != nil {
+		return *event.StartDate
+	}
+	return time.Time{}
+}
+
+// plannedCalendarEvents projects context events to the confirmation input shape.
+func plannedCalendarEvents(events []CalendarEvent) []PlannedCalendarEvent {
+	planned := make([]PlannedCalendarEvent, 0, len(events))
+	for _, event := range events {
+		planned = append(planned, PlannedCalendarEvent{CalendarSourceID: event.CalendarSourceID, ExternalEventID: event.ExternalEventID})
+	}
+	return planned
 }
 
 // calendarTimeLabel formats an event as a compact time reference in the local zone.

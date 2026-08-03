@@ -231,10 +231,14 @@ func (s *DailyService) Confirm(ctx context.Context, rawDate, sessionID string) (
 	if session.Status != DailySessionReviewing || session.Preview == nil {
 		return DailyPlanningView{}, ErrInvalidSessionState
 	}
-	if err := validateProposal(*session.Preview, session.Context); err != nil {
+	// Calendar events are the plan date's constraints, not a model choice: store
+	// exactly the events shown for the day rather than any model selection.
+	preview := *session.Preview
+	preview.CalendarEvents = plannedCalendarEvents(todaysCalendarEvents(session.Context.Calendar, date, s.location))
+	if err := validateProposal(preview, session.Context); err != nil {
 		return DailyPlanningView{}, err
 	}
-	if _, err := s.store.ConfirmDailySession(ctx, s.userID, sessionID, *session.Preview, session.Context); err != nil {
+	if _, err := s.store.ConfirmDailySession(ctx, s.userID, sessionID, preview, session.Context); err != nil {
 		return DailyPlanningView{}, err
 	}
 	return s.dailyView(ctx, date, nil)
@@ -248,7 +252,7 @@ func (s *DailyService) dailyView(ctx context.Context, date time.Time, session *D
 	}
 	view.Plan = planView.Plan
 	if session != nil && session.Preview != nil {
-		components := previewComponents(*session.Preview, session.Context, s.location)
+		components := previewComponents(*session.Preview, session.Context, date, s.location)
 		view.PreviewComponents = &components
 	}
 	return view, nil

@@ -698,3 +698,10 @@ the sections above always describe the current intended design.
   the chat and split the plan across two hard-to-review shapes. Trade-off: one
   structured-output call per turn. Tracked in
   [#61](https://github.com/cloveclovedev/alt/issues/61).
+- 2026-08-03 — Made calendar events deterministic rather than a model
+  selection. The model narrowed its calendar picks over turns, so the day's
+  schedule appeared incomplete. Calendar events are the plan date's constraints:
+  the draft and the confirmed revision now show and store every context event on
+  the plan date, in start order, and the model no longer selects calendar events
+  (that field left the proposal schema). Tracked in
+  [#61](https://github.com/cloveclovedev/alt/issues/61).
