@@ -106,19 +106,23 @@ func (s *Store) loadRevisionComponents(ctx context.Context, revisionID string, l
 	}
 
 	routineRows, err := s.pool.Query(ctx, `
-		SELECT r.name, c.name
+		SELECT r.id::text, r.name, c.name,
+		       EXISTS(
+		         SELECT 1 FROM routine_events AS e
+		         WHERE e.routine_id = r.id AND e.completed_on = $2
+		       )
 		FROM plan_revision_routines AS pr
 		JOIN routines AS r ON r.id = pr.routine_id
 		JOIN routine_categories AS c ON c.id = r.category_id
 		WHERE pr.plan_revision_id = $1
 		ORDER BY pr.position
-	`, revisionID)
+	`, revisionID, localToday(location).Format(time.DateOnly))
 	if err != nil {
 		return PlanComponents{}, fmt.Errorf("load revision routines: %w", err)
 	}
 	for routineRows.Next() {
 		var routine PlanRoutine
-		if err := routineRows.Scan(&routine.Name, &routine.CategoryName); err != nil {
+		if err := routineRows.Scan(&routine.RoutineID, &routine.Name, &routine.CategoryName, &routine.CompletedToday); err != nil {
 			routineRows.Close()
 			return PlanComponents{}, fmt.Errorf("scan revision routine: %w", err)
 		}
@@ -182,4 +186,10 @@ func (s *Store) loadRevisionComponents(ctx context.Context, revisionID string, l
 	}
 
 	return components, nil
+}
+
+// localToday returns the current calendar date in the given location.
+func localToday(location *time.Location) time.Time {
+	now := time.Now().In(location)
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
 }

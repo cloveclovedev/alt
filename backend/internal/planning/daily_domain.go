@@ -219,8 +219,10 @@ func (i PlanGitHubIssue) Repository() string {
 
 // PlanRoutine is a selected routine's display snapshot.
 type PlanRoutine struct {
-	Name         string
-	CategoryName string
+	RoutineID      string
+	Name           string
+	CategoryName   string
+	CompletedToday bool
 }
 
 // PlanCalendarEvent is a selected calendar event reduced to a minimal reference.
@@ -259,7 +261,7 @@ func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, p
 	}
 	for _, id := range proposal.RoutineIDs {
 		if routine, ok := routinesByID[id]; ok {
-			components.Routines = append(components.Routines, PlanRoutine{Name: routine.Name, CategoryName: routine.CategoryName})
+			components.Routines = append(components.Routines, PlanRoutine{RoutineID: routine.RoutineID, Name: routine.Name, CategoryName: routine.CategoryName})
 		}
 	}
 

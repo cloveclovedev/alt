@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#11231d">
   <title>{{planTitle .Kind}} · alt</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -30,6 +31,7 @@
         </a>
         {{with .Plan}}
           <div class="saved-plan">{{markdown .SummaryMarkdown}}</div>
+          {{template "home-checklist" .Components}}
         {{end}}
       </section>
     {{else}}

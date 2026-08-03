@@ -82,6 +82,29 @@ current daily plan there; later features may compose the current weekly plan,
 tasks, KPI progress, and other time-sensitive information into the same page.
 The period routes remain the canonical detail pages.
 
+## HTMX and loading-state convention
+
+Any action that goes through the LLM or otherwise takes noticeable time must
+show its waiting state in the UI rather than blocking on a full-page
+navigation. This is a product-wide convention, not specific to one feature.
+
+- Long or LLM-backed actions submit through HTMX (`hx-post`) instead of a
+  plain form post, and the response replaces the same fragment the page
+  rendered on initial load rather than issuing a redirect.
+- While a request is in flight, the triggering button is disabled
+  (`hx-disabled-elt`) and a small, action-specific label (for example
+  "Sending…", "Confirming…") appears beside it via `hx-indicator`. The
+  triggering control's position does not shift.
+- Every HTMX-enhanced form keeps its plain `action`/`method` attributes, so
+  the flow still works with JavaScript disabled: the server redirects back to
+  the full page instead of returning a fragment when the request has no
+  `HX-Request` header.
+- htmx is vendored under a feature's `static/` directory and served from the
+  application; the browser never depends on a CDN, matching the
+  container-portability goal.
+
+Reference: <https://htmx.org/docs/>
+
 ## Identity model
 
 Identity, authentication mappings, and application profile data are separate
@@ -231,3 +254,12 @@ the sections above always describe the current intended design.
 
 - 2026-07-27 — Initial foundation design: rebuild alt as a single Go web
   application with typed boundaries.
+- 2026-08-03 — Established the HTMX and loading-state convention: long or
+  LLM-backed actions submit over HTMX and show an in-place, action-specific
+  loading label next to the disabled triggering control instead of navigating
+  on redirect; the plain-form fallback is preserved for no-JavaScript use.
+  htmx is vendored rather than loaded from a CDN. Applied first to
+  daily-planning's context refresh, continue-without-failed-sources, message
+  send, and confirm actions, and to the planning home card's routine
+  completion action. Tracked in
+  [#65](https://github.com/cloveclovedev/alt/issues/65).

@@ -106,6 +106,15 @@ type DetailView struct {
 	Categories []Category
 }
 
+// CompleteFragmentView renders the small "done" state an embedding page (such
+// as the planning home card) swaps in after an HTMX completion request.
+type CompleteFragmentView struct {
+	RoutineID    string
+	Name         string
+	CategoryName string
+	Note         string
+}
+
 // CategoryInput is a transport-neutral category mutation.
 type CategoryInput struct {
 	Name     string

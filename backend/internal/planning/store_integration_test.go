@@ -85,6 +85,51 @@ func TestStorePlanningFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var categoryID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO routine_categories (user_id, name, position)
+		VALUES ($1, 'Health', 0)
+		RETURNING id::text
+	`, userID).Scan(&categoryID); err != nil {
+		t.Fatal(err)
+	}
+	var completedRoutineID, pendingRoutineID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO routines (user_id, category_id, name, interval_days)
+		VALUES ($1, $2, 'Stretch', 1)
+		RETURNING id::text
+	`, userID, categoryID).Scan(&completedRoutineID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO routines (user_id, category_id, name, interval_days)
+		VALUES ($1, $2, 'Water the plants', 3)
+		RETURNING id::text
+	`, userID, categoryID).Scan(&pendingRoutineID); err != nil {
+		t.Fatal(err)
+	}
+	today := time.Now().In(location)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO routine_events (routine_id, completed_on)
+		VALUES ($1, $2)
+	`, completedRoutineID, today.Format(time.DateOnly)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plan_revision_routines (plan_revision_id, routine_id, position)
+		VALUES ($1, $2, 0), ($1, $3, 1)
+	`, revisionID, completedRoutineID, pendingRoutineID); err != nil {
+		t.Fatal(err)
+	}
+	// Registered after the user-delete cleanup, so it runs first (t.Cleanup is
+	// LIFO): a confirmed plan's routine references block deleting the routine,
+	// which would otherwise fail user cascade deletion.
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DELETE FROM plan_revision_routines WHERE plan_revision_id = $1`, revisionID); err != nil {
+			t.Errorf("delete plan revision routines: %v", err)
+		}
+	})
+
 	view, err := store.Load(ctx, userID, KindDaily, date, location)
 	if err != nil {
 		t.Fatal(err)
@@ -105,5 +150,12 @@ func TestStorePlanningFlow(t *testing.T) {
 	}
 	if len(components.ActionItems) != 1 || components.ActionItems[0].Title != "Draft the release notes" {
 		t.Fatalf("action items = %#v", components.ActionItems)
+	}
+	if len(components.Routines) != 2 ||
+		components.Routines[0].RoutineID != completedRoutineID ||
+		!components.Routines[0].CompletedToday ||
+		components.Routines[1].RoutineID != pendingRoutineID ||
+		components.Routines[1].CompletedToday {
+		t.Fatalf("routines = %#v", components.Routines)
 	}
 }

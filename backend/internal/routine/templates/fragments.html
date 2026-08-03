@@ -1,0 +1,14 @@
+{{/* routine-complete-fragment is returned instead of a redirect when the
+     completion form is submitted over HTMX (see the planning home card).
+     Its markup intentionally mirrors the "done" state of the
+     checklist-routine list item rendered by the embedding page, so an
+     hx-swap="outerHTML" replaces the row without a visual jump. */}}
+{{define "routine-complete-fragment"}}
+<li class="checklist-routine done" id="routine-{{.RoutineID}}">
+  <div class="checklist-routine-name">
+    <span>{{.Name}}</span>
+    <span class="meta">{{.CategoryName}}</span>
+  </div>
+  <span class="done-badge">Completed today{{if .Note}} &mdash; {{.Note}}{{end}}</span>
+</li>
+{{end}}

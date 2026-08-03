@@ -66,3 +66,74 @@
     </div>
   {{end}}
 {{end}}
+
+{{/* home-checklist renders the confirmed plan's structured selections as the
+     home card's checklist. GitHub issues and action items stay plain,
+     non-interactive list items, matching plan-components. Routines are
+     interactive: each renders a one-click completion form or, once
+     completed today, a done badge. This markup is intentionally separate
+     from plan-components rather than sharing it, since only the home card
+     offers routine completion. */}}
+{{define "home-checklist"}}
+  {{if not .Empty}}
+    <div class="checklist">
+      {{if .GitHubIssues}}
+        <div class="component-group">
+          <h4>GitHub issues</h4>
+          <ul class="component-list">
+            {{range .GitHubIssues}}
+              <li>
+                <a href="{{.HTMLURL}}" rel="noopener noreferrer" target="_blank">{{.Repository}}#{{.Number}}</a>
+                <span>{{.Title}}</span>
+              </li>
+            {{end}}
+          </ul>
+        </div>
+      {{end}}
+      {{if .Routines}}
+        <div class="component-group">
+          <h4>Routines</h4>
+          <ul class="checklist-routines">
+            {{range .Routines}}{{template "home-routine-item" .}}{{end}}
+          </ul>
+        </div>
+      {{end}}
+      {{if .ActionItems}}
+        <div class="component-group">
+          <h4>Action items</h4>
+          <ul class="component-list">
+            {{range .ActionItems}}<li><span>{{.Title}}</span>{{if .Note}}<span class="meta">{{.Note}}</span>{{end}}</li>{{end}}
+          </ul>
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+{{end}}
+
+{{/* home-routine-item's markup mirrors the routine-complete-fragment defined
+     in the routine feature's own templates, so an hx-swap="outerHTML"
+     response from POST /routines/{id}/complete replaces this row without a
+     visual jump. The completion date is not submitted; the service defaults
+     it to today. */}}
+{{define "home-routine-item"}}
+  <li class="checklist-routine{{if .CompletedToday}} done{{end}}" id="routine-{{.RoutineID}}">
+    <div class="checklist-routine-name">
+      <span>{{.Name}}</span>
+      <span class="meta">{{.CategoryName}}</span>
+    </div>
+    {{if .CompletedToday}}
+      <span class="done-badge">Completed today</span>
+    {{else}}
+      <form class="complete-form action-row"
+            hx-post="/routines/{{.RoutineID}}/complete"
+            hx-target="#routine-{{.RoutineID}}"
+            hx-swap="outerHTML"
+            hx-disabled-elt="find button"
+            action="/routines/{{.RoutineID}}/complete" method="post">
+        <input type="text" name="note" maxlength="10000" placeholder="Note (optional)">
+        <button type="submit">Complete</button>
+        <span class="htmx-indicator">Completing…</span>
+      </form>
+    {{end}}
+  </li>
+{{end}}
