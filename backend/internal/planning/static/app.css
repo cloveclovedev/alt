@@ -497,6 +497,25 @@ button.secondary:hover {
   margin-bottom: 1.25rem;
 }
 
+.chat-history {
+  margin-bottom: 1rem;
+}
+
+.chat-history > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.chat-history[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.chat-history .chat {
+  margin-bottom: 0;
+}
+
 .message .role {
   display: block;
   color: var(--muted);

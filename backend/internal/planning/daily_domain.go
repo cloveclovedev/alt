@@ -155,6 +155,24 @@ type DailyPlanningSession struct {
 	FinalizedAt             *time.Time
 }
 
+// LatestMessage returns the most recent turn, or nil when the conversation is
+// empty. It is shown expanded while earlier turns collapse, keeping the page
+// short as the conversation grows.
+func (s *DailyPlanningSession) LatestMessage() *DailyPlanningMessage {
+	if len(s.Messages) == 0 {
+		return nil
+	}
+	return &s.Messages[len(s.Messages)-1]
+}
+
+// EarlierMessages returns every turn before the latest, for the collapsed history.
+func (s *DailyPlanningSession) EarlierMessages() []DailyPlanningMessage {
+	if len(s.Messages) <= 1 {
+		return nil
+	}
+	return s.Messages[:len(s.Messages)-1]
+}
+
 // DailyPlanningView is the complete web view for one local date.
 type DailyPlanningView struct {
 	Date     time.Time

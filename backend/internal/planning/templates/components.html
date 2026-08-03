@@ -2,6 +2,13 @@
      planning page. Prose renders as sanitized Markdown; the structured
      selections render as their own lists beside it. */}}
 
+{{define "chat-message"}}
+  <div class="message message-{{.Role}}">
+    <span class="role">{{.Role}}</span>
+    {{if eq .Role "assistant"}}<div class="message-body">{{markdown .Content}}</div>{{else}}<p class="message-body">{{.Content}}</p>{{end}}
+  </div>
+{{end}}
+
 {{define "plan-body"}}
   <div class="saved-plan">
     <h3>Summary</h3>

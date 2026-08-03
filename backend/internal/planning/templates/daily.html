@@ -44,14 +44,13 @@
     </form>
   {{else}}
     {{if .Messages}}
-      <div class="chat">
-        {{range .Messages}}
-          <div class="message message-{{.Role}}">
-            <span class="role">{{.Role}}</span>
-            {{if eq .Role "assistant"}}<div class="message-body">{{markdown .Content}}</div>{{else}}<p class="message-body">{{.Content}}</p>{{end}}
-          </div>
-        {{end}}
-      </div>
+      {{with .EarlierMessages}}
+        <details class="chat-history">
+          <summary>Earlier conversation ({{len .}})</summary>
+          <div class="chat">{{range .}}{{template "chat-message" .}}{{end}}</div>
+        </details>
+      {{end}}
+      {{with .LatestMessage}}<div class="chat">{{template "chat-message" .}}</div>{{end}}
     {{else}}
       <p class="empty">Send a message to start planning. The assistant replies and drafts a plan below that you refine and then confirm.</p>
     {{end}}
