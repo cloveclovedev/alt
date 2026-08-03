@@ -80,7 +80,14 @@ func (h *Handler) generateCoaching(w http.ResponseWriter, r *http.Request) {
 	coaching, err := h.service.GenerateCoaching(r.Context(), date)
 	if err != nil {
 		if errors.Is(err, ErrAIUnavailable) {
-			h.renderCoaching(w, r, coachingView{Date: date.Format(time.DateOnly), Message: strings.TrimPrefix(err.Error(), ErrAIUnavailable.Error()+": ")})
+			// Keep any previously cached coaching on screen; only the (failed)
+			// regeneration is unavailable, and the cache still holds a valid card.
+			cached, loadErr := h.service.Coaching(r.Context(), date)
+			if loadErr != nil {
+				h.fail(w, loadErr)
+				return
+			}
+			h.renderCoaching(w, r, coachingView{Date: date.Format(time.DateOnly), Coaching: cached, Message: strings.TrimPrefix(err.Error(), ErrAIUnavailable.Error()+": ")})
 			return
 		}
 		h.fail(w, err)

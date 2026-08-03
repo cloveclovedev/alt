@@ -23,8 +23,14 @@ Return two fields:
 Do not restate the raw numbers as a table; the app already shows them.`
 
 // Coaching returns the cached coaching for a date, or nil when none is generated.
+// The generation timestamp is presented in the user's local timezone.
 func (s *Service) Coaching(ctx context.Context, date time.Time) (*Coaching, error) {
-	return s.store.LoadCoaching(ctx, s.userID, date)
+	coaching, err := s.store.LoadCoaching(ctx, s.userID, date)
+	if err != nil || coaching == nil {
+		return coaching, err
+	}
+	coaching.GeneratedAt = coaching.GeneratedAt.In(s.location)
+	return coaching, nil
 }
 
 // GenerateCoaching produces on-demand coaching for a date from stored entries and
@@ -61,12 +67,17 @@ func (s *Service) GenerateCoaching(ctx context.Context, date time.Time) (Coachin
 	if err := json.Unmarshal([]byte(completion.Content), &parsed); err != nil {
 		return Coaching{}, fmt.Errorf("decode nutrition coaching: %w", err)
 	}
-	return s.store.UpsertCoaching(ctx, s.userID, date, Coaching{
+	stored, err := s.store.UpsertCoaching(ctx, s.userID, date, Coaching{
 		EvaluationMarkdown: parsed.EvaluationMarkdown,
 		SuggestionMarkdown: parsed.SuggestionMarkdown,
 		ModelID:            completion.Model,
 		PromptVersion:      coachingPromptVersion,
 	})
+	if err != nil {
+		return Coaching{}, err
+	}
+	stored.GeneratedAt = stored.GeneratedAt.In(s.location)
+	return stored, nil
 }
 
 // coachingContext is the compact, provider-neutral view of a day handed to the

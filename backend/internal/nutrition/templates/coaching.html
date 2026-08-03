@@ -7,7 +7,7 @@
     {{markdown .Coaching.EvaluationMarkdown}}
     <h3>Suggestion</h3>
     {{markdown .Coaching.SuggestionMarkdown}}
-    <p class="meta">Generated {{.Coaching.GeneratedAt.Format "2006-01-02 15:04"}} · {{.Coaching.ModelID}}</p>
+    <p class="meta">Generated {{.Coaching.GeneratedAt.Format "2006-01-02 15:04 MST"}} · {{.Coaching.ModelID}}</p>
   </div>
   {{else}}
   <p class="empty">No coaching generated for today yet.</p>
