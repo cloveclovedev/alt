@@ -144,7 +144,7 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if photoStore != nil {
 		nutritionPhotos = photoStore
 	}
-	nutritionService, err := nutrition.NewService(nutrition.NewStore(pool), cfg.UserID, cfg.UserTimezone, aiService, nutritionPhotos)
+	nutritionService, err := nutrition.NewService(nutrition.NewStore(pool), cfg.UserID, cfg.UserTimezone, aiService, nutritionPhotos, logger)
 	if err != nil {
 		return err
 	}

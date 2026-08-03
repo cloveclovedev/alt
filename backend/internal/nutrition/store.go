@@ -179,6 +179,34 @@ func (s *Store) CreateEntry(ctx context.Context, userID string, input EntryInput
 	return entry, nil
 }
 
+// CreateEntries inserts several intake entries in one transaction, so a failure
+// on any row leaves none written. Inputs are validated by the service before this
+// call; the transaction also protects against a catalog item deleted between
+// validation and insert (the foreign key rejects it and the whole batch rolls
+// back).
+func (s *Store) CreateEntries(ctx context.Context, userID string, inputs []EntryInput) error {
+	if len(inputs) == 0 {
+		return nil
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin nutrition entries transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, input := range inputs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO nutrition_entries (user_id, logged_date, meal_type, name, calories_kcal, protein_g, source, catalog_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`, userID, input.LoggedDate.Format(time.DateOnly), string(input.MealType), input.Name, input.CaloriesKcal, input.ProteinG, string(input.Source), input.CatalogID); err != nil {
+			return fmt.Errorf("insert nutrition entry: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit nutrition entries: %w", err)
+	}
+	return nil
+}
+
 // UpdateEntry edits one owned entry (a correction). meal_type, name, and metrics
 // are editable; the source and catalog link are not changed here.
 func (s *Store) UpdateEntry(ctx context.Context, userID, id string, input EntryInput) error {

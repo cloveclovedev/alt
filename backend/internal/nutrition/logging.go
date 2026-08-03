@@ -81,9 +81,18 @@ func (s *Service) ParsePhoto(ctx context.Context, image []byte, contentType stri
 	if err := s.photos.Put(ctx, key, contentType, bytes.NewReader(image)); err != nil {
 		return nil, fmt.Errorf("stage nutrition photo: %w", err)
 	}
-	// The photo is transient: remove it after extraction whatever the outcome.
-	// WithoutCancel so cleanup still runs if the request context is cancelled.
-	defer func() { _ = s.photos.Delete(context.WithoutCancel(ctx), key) }()
+	// The photo is transient: remove it after extraction whatever the outcome. Use
+	// a bounded context detached from request cancellation so cleanup still runs,
+	// and log a failure so a lingering object is observable — a bucket lifecycle
+	// rule expiring the uploads/ prefix is the backstop for a delete that never
+	// succeeds.
+	defer func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if err := s.photos.Delete(cleanupCtx, key); err != nil {
+			s.logger.Error("failed to delete staged nutrition photo", "key", key, "error", err)
+		}
+	}()
 
 	dataURL := "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(image)
 	messages := []ai.Message{

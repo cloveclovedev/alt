@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -34,17 +35,22 @@ type Service struct {
 	now      func() time.Time
 	ai       Parser
 	photos   PhotoStore
+	logger   *slog.Logger
 }
 
 // NewService constructs the nutrition service for one local user and timezone.
 // parser and photos are optional (nil when AI or object storage is unconfigured);
-// the AI logging methods return a clear error when their dependency is absent.
-func NewService(store *Store, userID, timezone string, parser Parser, photos PhotoStore) (*Service, error) {
+// the AI logging methods return a clear error when their dependency is absent. A
+// nil logger falls back to the default logger.
+func NewService(store *Store, userID, timezone string, parser Parser, photos PhotoStore, logger *slog.Logger) (*Service, error) {
 	location, err := time.LoadLocation(timezone)
 	if err != nil {
 		return nil, fmt.Errorf("load timezone: %w", err)
 	}
-	return &Service{store: store, userID: userID, location: location, now: time.Now, ai: parser, photos: photos}, nil
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Service{store: store, userID: userID, location: location, now: time.Now, ai: parser, photos: photos, logger: logger}, nil
 }
 
 // LocalToday returns the current local calendar date at midnight.
@@ -108,6 +114,24 @@ func (s *Service) CreateEntry(ctx context.Context, input EntryInput) (Entry, err
 		return Entry{}, err
 	}
 	return s.store.CreateEntry(ctx, s.userID, normalized)
+}
+
+// CreateEntries validates every input, then writes them in one transaction so a
+// confirmation of several candidates is all-or-nothing: a failure on any row
+// leaves none saved, and a retry cannot duplicate earlier rows.
+func (s *Service) CreateEntries(ctx context.Context, inputs []EntryInput) (int, error) {
+	normalized := make([]EntryInput, 0, len(inputs))
+	for _, input := range inputs {
+		valid, err := s.validateEntryInput(ctx, input)
+		if err != nil {
+			return 0, err
+		}
+		normalized = append(normalized, valid)
+	}
+	if err := s.store.CreateEntries(ctx, s.userID, normalized); err != nil {
+		return 0, err
+	}
+	return len(normalized), nil
 }
 
 // UpdateEntry validates and corrects an owned entry.

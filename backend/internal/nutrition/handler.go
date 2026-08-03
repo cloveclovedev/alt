@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -130,8 +131,11 @@ func (h *Handler) parseText(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) parsePhoto(w http.ResponseWriter, r *http.Request) {
+	// Cap the whole request body before parsing so an oversized upload is rejected
+	// up front rather than spilled to disk and read into a large allocation.
+	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoBytes)
 	if err := r.ParseMultipartForm(maxPhotoBytes); err != nil {
-		h.renderCandidates(w, r, nil, fmt.Errorf("%w: could not read the uploaded photo", ErrInvalidInput))
+		h.renderCandidates(w, r, nil, fmt.Errorf("%w: the photo is too large or could not be read", ErrInvalidInput))
 		return
 	}
 	file, header, err := r.FormFile("photo")
@@ -140,21 +144,12 @@ func (h *Handler) parsePhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	data := make([]byte, 0, header.Size)
-	buf := make([]byte, 32<<10)
-	for {
-		n, readErr := file.Read(buf)
-		data = append(data, buf[:n]...)
-		if len(data) > maxPhotoBytes {
-			h.renderCandidates(w, r, nil, fmt.Errorf("%w: photo is too large", ErrInvalidInput))
-			return
-		}
-		if readErr != nil {
-			break
-		}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		h.renderCandidates(w, r, nil, fmt.Errorf("%w: the photo could not be read", ErrInvalidInput))
+		return
 	}
-	contentType := header.Header.Get("Content-Type")
-	candidates, err := h.service.ParsePhoto(r.Context(), data, contentType)
+	candidates, err := h.service.ParsePhoto(r.Context(), data, header.Header.Get("Content-Type"))
 	h.renderCandidates(w, r, candidates, err)
 }
 
@@ -165,27 +160,30 @@ func (h *Handler) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	// Each candidate row is submitted with an index suffix so unchecked rows (whose
 	// checkbox is simply absent) do not misalign the remaining fields.
-	created := 0
+	today := h.service.LocalToday()
+	inputs := make([]EntryInput, 0, len(r.Form["row"]))
 	for _, index := range r.Form["row"] {
 		if r.FormValue("include_"+index) != "on" {
 			continue
 		}
 		calories, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("calories_kcal_" + index)))
 		protein, _ := strconv.ParseFloat(strings.TrimSpace(r.FormValue("protein_g_"+index)), 64)
-		input := EntryInput{
-			LoggedDate:   h.service.LocalToday(),
+		inputs = append(inputs, EntryInput{
+			LoggedDate:   today,
 			MealType:     MealType(strings.TrimSpace(r.FormValue("meal_type_" + index))),
 			Name:         r.FormValue("name_" + index),
 			CaloriesKcal: calories,
 			ProteinG:     protein,
 			Source:       EntrySource(strings.TrimSpace(r.FormValue("source_" + index))),
 			CatalogID:    optionalID(r.FormValue("catalog_id_" + index)),
-		}
-		if _, err := h.service.CreateEntry(r.Context(), input); err != nil {
-			h.badRequest(w, err)
-			return
-		}
-		created++
+		})
+	}
+	// One transaction: either every selected candidate is recorded or none is, so a
+	// mid-batch failure can't leave a partial day that a retry would duplicate.
+	created, err := h.service.CreateEntries(r.Context(), inputs)
+	if err != nil {
+		h.badRequest(w, err)
+		return
 	}
 	h.renderForm(w, r, fmt.Sprintf("Recorded %d %s.", created, plural(created, "entry", "entries")))
 }
