@@ -198,17 +198,6 @@ func (s *Store) ReplaceCalendarSources(ctx context.Context, userID string, sourc
 	return nil
 }
 
-func (s *Store) SaveModelAssignment(ctx context.Context, userID, purpose, modelID string) error {
-	if _, err := s.pool.Exec(ctx, `
-		INSERT INTO ai_model_assignments (user_id, purpose, model_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, purpose) DO UPDATE SET model_id = EXCLUDED.model_id, updated_at = now()
-	`, userID, purpose, modelID); err != nil {
-		return fmt.Errorf("save AI model assignment: %w", err)
-	}
-	return nil
-}
-
 func duplicatePlanningInput(err error, field string) error {
 	var databaseError *pgconn.PgError
 	if errors.As(err, &databaseError) && databaseError.Code == "23505" {

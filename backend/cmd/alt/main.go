@@ -12,12 +12,14 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/cloveclovedev/alt/internal/ai"
 	"github.com/cloveclovedev/alt/internal/core/config"
 	"github.com/cloveclovedev/alt/internal/core/database"
 	"github.com/cloveclovedev/alt/internal/core/httpserver"
 	"github.com/cloveclovedev/alt/internal/core/logging"
 	"github.com/cloveclovedev/alt/internal/identity"
 	"github.com/cloveclovedev/alt/internal/planning"
+	"github.com/cloveclovedev/alt/internal/platform/openrouter"
 	"github.com/cloveclovedev/alt/internal/routine"
 )
 
@@ -90,7 +92,8 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	githubClient := planning.NewGitHubClient()
-	openRouterClient := planning.NewOpenRouterClient(cfg.OpenRouterAPIKey)
+	openRouterClient := openrouter.New(cfg.OpenRouterAPIKey)
+	aiService := ai.NewService(ai.NewStore(pool), openRouterClient, cfg.UserID)
 	var calendarClient *planning.GoogleCalendarClient
 	var calendarReader planning.CalendarPlanningReader
 	if cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "" && cfg.GoogleOAuthRedirectURL != "" && cfg.CalendarTokenEncryptionKey != "" {
@@ -106,7 +109,7 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	dailyService, err := planning.NewDailyService(
 		planningStore, cfg.UserID, cfg.UserTimezone,
 		planning.NewDailyGatherer(planningStore, routineService, githubClient, calendarReader),
-		openRouterClient,
+		aiService,
 	)
 	if err != nil {
 		return err
@@ -115,7 +118,11 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	settingsHandler, err := planning.NewSettingsHandler(planningStore, cfg.UserID, githubClient, calendarClient, openRouterClient, logger)
+	settingsHandler, err := planning.NewSettingsHandler(planningStore, cfg.UserID, githubClient, calendarClient, logger)
+	if err != nil {
+		return err
+	}
+	aiSettingsHandler, err := ai.NewSettingsHandler(aiService, logger)
 	if err != nil {
 		return err
 	}
@@ -124,6 +131,7 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	planningHandler.Register(mux)
 	dailyHandler.Register(mux)
 	settingsHandler.Register(mux)
+	aiSettingsHandler.Register(mux)
 	routineHandler.Register(mux)
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
