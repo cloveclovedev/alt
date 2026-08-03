@@ -354,3 +354,19 @@ sections above always describe the current intended design.
   adding an ambiguous second row; the trailing average divides by the full window
   length, counting untracked days as zero. Tracked in
   [#73](https://github.com/cloveclovedev/alt/issues/73).
+- 2026-08-03 — Implemented the logging input flow (#74): manual entry, catalog
+  quick-pick, and AI photo/text parsing behind a user confirmation gate, in
+  `internal/nutrition` (`logging.go`, `handler.go`, `templates/`). Added the
+  `core/objectstore` S3-compatible adapter (aws-sdk-go-v2, path-style, endpoint
+  override, presigned GET) and a local Garage service in Docker Compose
+  configured entirely by env (`--single-node --default-bucket`), so no bootstrap
+  step is needed. Decisions: the AI logging purpose (`nutrition_logging`) is used
+  for both text and photo; for vision the image is sent inline as a base64 data
+  URL rather than a presigned URL, because a dev object store is not reachable
+  from the provider — the photo is still staged in object storage and deleted
+  after extraction, satisfying the transient-retention decision. Candidates are
+  never persisted server-side: they round-trip through an editable preview and
+  are written only on confirmation. A malformed id path parameter now maps to
+  not-found (400/404) rather than a 502. The engineering-policy default S3 test
+  container was switched from MinIO to Garage (MinIO's server is unmaintained).
+  Tracked in [#74](https://github.com/cloveclovedev/alt/issues/74).

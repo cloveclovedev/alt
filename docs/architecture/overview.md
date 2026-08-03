@@ -43,12 +43,14 @@ backend/
     │   ├── config/
     │   ├── database/
     │   ├── httpserver/
-    │   └── logging/
+    │   ├── logging/
+    │   └── objectstore/     S3-compatible object storage (R2 prod / Garage dev)
     ├── platform/            shared, provider-specific integrations
     │   └── openrouter/      OpenRouter transport, ZDR policy, capability discovery
     ├── ai/                  shared inference foundation: purpose-based model
     │                        assignment, ZDR enforcement, usage metadata, /settings/ai
     ├── identity/            application users and local bootstrap
+    ├── nutrition/           calorie/protein logging, catalog, targets, AI parsing
     ├── planning/            plans, daily sessions, and source adapters
     └── routine/             routine definitions and completion events
 ```

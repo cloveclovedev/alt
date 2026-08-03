@@ -59,7 +59,7 @@ func (s *Store) GetCatalogItem(ctx context.Context, userID, id string) (CatalogI
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
 	item, err := scanCatalogItem(row)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || isInvalidUUID(err) {
 		return CatalogItem{}, ErrNotFound
 	}
 	if err != nil {
@@ -155,7 +155,7 @@ func (s *Store) GetEntry(ctx context.Context, userID, id string) (Entry, error) 
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
 	entry, err := scanEntry(row)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || isInvalidUUID(err) {
 		return Entry{}, ErrNotFound
 	}
 	if err != nil {
@@ -177,6 +177,34 @@ func (s *Store) CreateEntry(ctx context.Context, userID string, input EntryInput
 		return Entry{}, fmt.Errorf("create nutrition entry: %w", err)
 	}
 	return entry, nil
+}
+
+// CreateEntries inserts several intake entries in one transaction, so a failure
+// on any row leaves none written. Inputs are validated by the service before this
+// call; the transaction also protects against a catalog item deleted between
+// validation and insert (the foreign key rejects it and the whole batch rolls
+// back).
+func (s *Store) CreateEntries(ctx context.Context, userID string, inputs []EntryInput) error {
+	if len(inputs) == 0 {
+		return nil
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin nutrition entries transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	for _, input := range inputs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO nutrition_entries (user_id, logged_date, meal_type, name, calories_kcal, protein_g, source, catalog_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`, userID, input.LoggedDate.Format(time.DateOnly), string(input.MealType), input.Name, input.CaloriesKcal, input.ProteinG, string(input.Source), input.CatalogID); err != nil {
+			return fmt.Errorf("insert nutrition entry: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit nutrition entries: %w", err)
+	}
+	return nil
 }
 
 // UpdateEntry edits one owned entry (a correction). meal_type, name, and metrics
@@ -356,4 +384,12 @@ func scanTarget(row scanner) (Target, error) {
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// isInvalidUUID reports whether err is PostgreSQL's invalid-text-representation
+// error (22P02), which a malformed id path parameter produces. Such an id cannot
+// identify an existing row, so callers treat it as not found rather than a fault.
+func isInvalidUUID(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
 }

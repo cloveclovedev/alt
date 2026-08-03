@@ -1,0 +1,79 @@
+{{define "new.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add nutrition entry · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition · {{.Date}}</p>
+  </header>
+  <main>
+    <h1>Add nutrition entry</h1>
+    {{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+
+    <section>
+      <h2>Photo or text (AI)</h2>
+      {{if .AIEnabled}}
+      <p>AI proposes entries from a description or photo. Nothing is saved until you confirm.</p>
+      <form hx-post="/nutrition/entries/parse-text" action="/nutrition/entries/parse-text" method="post"
+            hx-target="#candidates" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <label>Describe what you ate
+          <textarea name="text" rows="2" placeholder="e.g. two eggs, toast, black coffee" required></textarea>
+        </label>
+        <button>Analyze text</button>
+        <span class="htmx-indicator">Analyzing…</span>
+      </form>
+      {{if .PhotoEnabled}}
+      <form hx-post="/nutrition/entries/parse-photo" action="/nutrition/entries/parse-photo" method="post"
+            enctype="multipart/form-data" hx-encoding="multipart/form-data"
+            hx-target="#candidates" hx-swap="innerHTML" hx-disabled-elt="find button">
+        <label>Meal photo <input type="file" name="photo" accept="image/*" required></label>
+        <button>Analyze photo</button>
+        <span class="htmx-indicator">Analyzing…</span>
+      </form>
+      {{else}}
+      <p class="empty">Photo analysis needs object storage configured.</p>
+      {{end}}
+      {{else}}
+      <p class="empty">Assign a vision-capable ZDR model to nutrition logging in <a href="/settings/ai">AI settings</a> to enable AI logging.</p>
+      {{end}}
+      <div id="candidates">{{template "candidates.html" .}}</div>
+    </section>
+
+    <section>
+      <h2>Manual entry</h2>
+      <form action="/nutrition/entries/manual" method="post">
+        <label>Meal
+          <select name="meal_type">{{range .MealTypes}}<option value="{{.}}">{{title (printf "%s" .)}}</option>{{end}}</select>
+        </label>
+        <label>Name <input name="name" required></label>
+        <label>Calories (kcal) <input type="number" name="calories_kcal" min="0" required></label>
+        <label>Protein (g) <input type="number" name="protein_g" min="0" step="0.1" required></label>
+        <button>Add entry</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>From catalog</h2>
+      {{if .Catalog}}
+      <form action="/nutrition/entries/catalog" method="post">
+        <label>Item
+          <select name="catalog_id" required>{{range .Catalog}}<option value="{{.ID}}">{{.Name}} — {{.CaloriesKcal}} kcal, {{.ProteinG}} g</option>{{end}}</select>
+        </label>
+        <label>Meal
+          <select name="meal_type">{{range .MealTypes}}<option value="{{.}}">{{title (printf "%s" .)}}</option>{{end}}</select>
+        </label>
+        <button>Add from catalog</button>
+      </form>
+      {{else}}
+      <p class="empty">No catalog items yet.</p>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>{{end}}

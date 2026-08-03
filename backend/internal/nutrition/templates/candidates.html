@@ -1,0 +1,25 @@
+{{define "candidates.html"}}
+{{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+{{if .Candidates}}
+<form action="/nutrition/entries/confirm" method="post">
+  <p>Review and edit the proposed entries, then confirm. Uncheck any you don't want.</p>
+  <ul class="candidate-list">
+    {{range $i, $c := .Candidates}}
+    <li>
+      <input type="hidden" name="row" value="{{$i}}">
+      <input type="hidden" name="source_{{$i}}" value="{{$c.Source}}">
+      {{if $c.CatalogID}}<input type="hidden" name="catalog_id_{{$i}}" value="{{$c.CatalogID}}">{{end}}
+      <label><input type="checkbox" name="include_{{$i}}" checked> Include</label>
+      <label>Name <input name="name_{{$i}}" value="{{$c.Name}}" required></label>
+      <label>Meal
+        <select name="meal_type_{{$i}}">{{range $.MealTypes}}<option value="{{.}}" {{if eq . $c.MealType}}selected{{end}}>{{title (printf "%s" .)}}</option>{{end}}</select>
+      </label>
+      <label>Calories <input type="number" name="calories_kcal_{{$i}}" value="{{$c.CaloriesKcal}}" min="0" required></label>
+      <label>Protein (g) <input type="number" name="protein_g_{{$i}}" value="{{$c.ProteinG}}" min="0" step="0.1" required></label>
+    </li>
+    {{end}}
+  </ul>
+  <button>Confirm entries</button>
+</form>
+{{end}}
+{{end}}

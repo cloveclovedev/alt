@@ -52,16 +52,49 @@ services:
       ALT_GOOGLE_OAUTH_CLIENT_SECRET:
       ALT_GOOGLE_OAUTH_REDIRECT_URL: http://localhost:28080/settings/calendar/callback
       ALT_CALENDAR_TOKEN_ENCRYPTION_KEY:
+      # Local object storage (Garage). Dev-only fixed credentials, mirroring the
+      # postgres alt/alt convention; production injects R2 settings instead.
+      ALT_OBJECT_STORE_ENDPOINT: http://garage:3900
+      ALT_OBJECT_STORE_REGION: garage
+      ALT_OBJECT_STORE_BUCKET: alt-objects
+      ALT_OBJECT_STORE_ACCESS_KEY_ID: GK31c2f1a3b4c5d6e7f8091a2b
+      ALT_OBJECT_STORE_SECRET_ACCESS_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
     ports:
       - "127.0.0.1:${ALT_WEB_HOST_PORT:-28080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      garage:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "/app/alt", "healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 5
+    networks: [alt]
+
+  garage:
+    image: dxflrs/garage:v2.3.0
+    restart: unless-stopped
+    # --single-node auto-assigns the cluster layout; --default-bucket creates the
+    # bucket and an access key from the GARAGE_DEFAULT_* env on first start, so no
+    # bootstrap step is needed. Dev-only fixed credentials.
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_DEFAULT_BUCKET: alt-objects
+      GARAGE_DEFAULT_ACCESS_KEY: GK31c2f1a3b4c5d6e7f8091a2b
+      GARAGE_DEFAULT_SECRET_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
+    volumes:
+      - ./deploy/garage/garage.dev.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    ports:
+      - "127.0.0.1:${ALT_GARAGE_HOST_PORT:-23900}:3900"
+    healthcheck:
+      test: ["CMD", "/garage", "bucket", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks: [alt]
 
   schema-dev:
@@ -91,6 +124,8 @@ services:
 
 volumes:
   postgres-data:
+  garage-meta:
+  garage-data:
 
 networks:
   alt:
