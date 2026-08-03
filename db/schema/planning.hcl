@@ -732,6 +732,11 @@ table "daily_planning_contexts" {
     null    = false
     default = sql("'{}'::jsonb")
   }
+  column "nutrition_context" {
+    type    = jsonb
+    null    = false
+    default = sql("'{}'::jsonb")
+  }
   column "calendar_status" {
     type = text
     null = false
@@ -743,6 +748,11 @@ table "daily_planning_contexts" {
   column "routine_status" {
     type = text
     null = false
+  }
+  column "nutrition_status" {
+    type    = text
+    null    = false
+    default = "unavailable"
   }
   column "gathered_at" {
     type = timestamptz

@@ -396,3 +396,15 @@ sections above always describe the current intended design.
   the day's coaching with a generate/refresh action. A card that fails to render
   is logged and skipped so one feature cannot take down the home page. Tracked in
   [#76](https://github.com/cloveclovedev/alt/issues/76).
+- 2026-08-04 — Implemented planning integration (#77). Nutrition exposes compact
+  facts to daily planning through planning's `NutritionContextSource` port,
+  implemented as a `PlanningFacts` method whose neutral struct the composition
+  root maps to planning's type — neither feature imports the other. The exposed
+  facts are aggregates only (yesterday vs target, today so far, trailing 7-day
+  average), never individual entries, so the model cannot reconstruct or fabricate
+  the log. Planning treats nutrition as a non-blocking source (unavailable when no
+  targets or entries exist). Persisting the gathered facts for session resume
+  required two columns on planning's `daily_planning_contexts` working table; the
+  cleaner decoupling of that persistence is deferred to
+  [#89](https://github.com/cloveclovedev/alt/issues/89). Tracked in
+  [#77](https://github.com/cloveclovedev/alt/issues/77).

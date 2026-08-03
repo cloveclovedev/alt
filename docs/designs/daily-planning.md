@@ -755,3 +755,20 @@ the sections above always describe the current intended design.
   planning `session_id` foreign key with a `user_id` foreign key, so any feature's
   usage metadata shares one table; existing rows are backfilled from the session's
   user. Tracked in [#72](https://github.com/cloveclovedev/alt/issues/72).
+- 2026-08-04 — Added nutrition as a daily-planning context source (#77). Planning
+  declares a provider-neutral `NutritionContextSource` port (returning a compact
+  `NutritionFacts`: yesterday's totals and target, today's intake so far, and a
+  trailing 7-day average) and never imports the nutrition package; the composition
+  root adapts nutrition's own facts type to planning's. Nutrition is non-blocking
+  context: a failure or absence records a status and degrades gracefully rather
+  than moving the session to `context_blocked`, so planning still succeeds when
+  nutrition is unavailable. The daily-planning prompt gained a compact
+  nutrition-facts section (nutrition is context, never a task or an entry the
+  model may create); the prompt version advanced to `daily-planning-v5`. To let
+  the gathered facts survive session resume, `daily_planning_contexts` gained
+  `nutrition_context` and `nutrition_status` columns — a pragmatic coupling
+  (planning's persistence layer now has a nutrition-shaped column even though its
+  code depends only on the port). Generalizing this so new context sources do not
+  each add columns is deferred to
+  [#89](https://github.com/cloveclovedev/alt/issues/89). No plan-revision
+  component table was added; a nutrition to-do is an ordinary action item.

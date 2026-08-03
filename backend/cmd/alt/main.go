@@ -92,38 +92,6 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	githubClient := planning.NewGitHubClient()
 	openRouterClient := openrouter.New(cfg.OpenRouterAPIKey)
 	aiService := ai.NewService(ai.NewStore(pool), openRouterClient, cfg.UserID)
-	var calendarClient *planning.GoogleCalendarClient
-	var calendarReader planning.CalendarPlanningReader
-	if cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "" && cfg.GoogleOAuthRedirectURL != "" && cfg.CalendarTokenEncryptionKey != "" {
-		cipher, cipherErr := planning.NewTokenCipher(cfg.CalendarTokenEncryptionKey)
-		if cipherErr != nil {
-			return cipherErr
-		}
-		calendarClient = planning.NewGoogleCalendarClient(planningStore, cipher, planning.CalendarOAuthConfig{
-			ClientID: cfg.GoogleOAuthClientID, ClientSecret: cfg.GoogleOAuthClientSecret, RedirectURL: cfg.GoogleOAuthRedirectURL,
-		})
-		calendarReader = calendarClient
-	}
-	dailyService, err := planning.NewDailyService(
-		planningStore, cfg.UserID, cfg.UserTimezone,
-		planning.NewDailyGatherer(planningStore, routineService, githubClient, calendarReader),
-		aiService,
-	)
-	if err != nil {
-		return err
-	}
-	dailyHandler, err := planning.NewDailyHandler(dailyService, logger)
-	if err != nil {
-		return err
-	}
-	settingsHandler, err := planning.NewSettingsHandler(planningStore, cfg.UserID, githubClient, calendarClient, logger)
-	if err != nil {
-		return err
-	}
-	aiSettingsHandler, err := ai.NewSettingsHandler(aiService, logger)
-	if err != nil {
-		return err
-	}
 	photoStore, err := objectstore.New(objectstore.Config{
 		Endpoint:        cfg.ObjectStoreEndpoint,
 		Region:          cfg.ObjectStoreRegion,
@@ -141,6 +109,38 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		nutritionPhotos = photoStore
 	}
 	nutritionService, err := nutrition.NewService(nutrition.NewStore(pool), cfg.UserID, cfg.UserTimezone, aiService, nutritionPhotos, logger)
+	if err != nil {
+		return err
+	}
+	var calendarClient *planning.GoogleCalendarClient
+	var calendarReader planning.CalendarPlanningReader
+	if cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "" && cfg.GoogleOAuthRedirectURL != "" && cfg.CalendarTokenEncryptionKey != "" {
+		cipher, cipherErr := planning.NewTokenCipher(cfg.CalendarTokenEncryptionKey)
+		if cipherErr != nil {
+			return cipherErr
+		}
+		calendarClient = planning.NewGoogleCalendarClient(planningStore, cipher, planning.CalendarOAuthConfig{
+			ClientID: cfg.GoogleOAuthClientID, ClientSecret: cfg.GoogleOAuthClientSecret, RedirectURL: cfg.GoogleOAuthRedirectURL,
+		})
+		calendarReader = calendarClient
+	}
+	dailyService, err := planning.NewDailyService(
+		planningStore, cfg.UserID, cfg.UserTimezone,
+		planning.NewDailyGatherer(planningStore, routineService, githubClient, calendarReader, nutritionPlanningContext{nutritionService}),
+		aiService,
+	)
+	if err != nil {
+		return err
+	}
+	dailyHandler, err := planning.NewDailyHandler(dailyService, logger)
+	if err != nil {
+		return err
+	}
+	settingsHandler, err := planning.NewSettingsHandler(planningStore, cfg.UserID, githubClient, calendarClient, logger)
+	if err != nil {
+		return err
+	}
+	aiSettingsHandler, err := ai.NewSettingsHandler(aiService, logger)
 	if err != nil {
 		return err
 	}
@@ -182,6 +182,23 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		httpserver.Middleware(logger, httpserver.SameOrigin(mux)),
 	)
 	return httpserver.Run(ctx, logger, server, cfg.ShutdownTimeout)
+}
+
+// nutritionPlanningContext adapts the nutrition service to planning's
+// NutritionContextSource port. The mapping between nutrition's planning-facts type
+// and planning's neutral type happens here, at the composition root, so neither
+// feature imports the other.
+type nutritionPlanningContext struct {
+	service *nutrition.Service
+}
+
+func (n nutritionPlanningContext) NutritionFacts(ctx context.Context, date time.Time) (*planning.NutritionFacts, error) {
+	facts, err := n.service.PlanningFacts(ctx, date)
+	if err != nil || facts == nil {
+		return nil, err
+	}
+	converted := planning.NutritionFacts(*facts)
+	return &converted, nil
 }
 
 func runHealthcheck(cfg config.Config) int {
