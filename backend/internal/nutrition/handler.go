@@ -51,6 +51,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /nutrition/entries/confirm", h.confirm)
 	mux.HandleFunc("GET /nutrition/coaching", h.coachingPage)
 	mux.HandleFunc("POST /nutrition/coaching", h.generateCoaching)
+	h.RegisterArea(mux)
 }
 
 // coachingView is the model for the coaching card and its standalone page.

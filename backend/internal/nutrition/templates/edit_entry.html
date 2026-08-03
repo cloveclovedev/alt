@@ -1,0 +1,29 @@
+{{define "edit_entry.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit entry · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition</p>
+    <nav class="header-nav"><a href="/nutrition">Today</a></nav>
+  </header>
+  <main>
+    <h1>Edit entry</h1>
+    <form action="/nutrition/entries/{{.Entry.ID}}" method="post">
+      <label>Meal
+        <select name="meal_type">{{range .MealTypes}}<option value="{{.}}" {{if eq . $.Entry.MealType}}selected{{end}}>{{title (printf "%s" .)}}</option>{{end}}</select>
+      </label>
+      <label>Name <input name="name" value="{{.Entry.Name}}" required></label>
+      <label>Calories (kcal) <input type="number" name="calories_kcal" value="{{.Entry.CaloriesKcal}}" min="0" required></label>
+      <label>Protein (g) <input type="number" name="protein_g" value="{{.Entry.ProteinG}}" min="0" step="0.1" required></label>
+      <button>Save changes</button>
+    </form>
+    <form action="/nutrition/entries/{{.Entry.ID}}/delete" method="post"><button>Delete entry</button></form>
+  </main>
+</body>
+</html>{{end}}

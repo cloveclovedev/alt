@@ -27,16 +27,26 @@ type Application interface {
 	ViewPlan(context.Context, string, string) (View, error)
 }
 
-// Handler serves the planning web interface.
-type Handler struct {
-	app    Application
-	logger *slog.Logger
-	tmpl   *template.Template
-	static http.Handler
+// HomeCardSource contributes a self-contained fragment to the home page. Other
+// features implement it so the home page can compose them without importing those
+// features (the composition happens at the composition root). A card is rendered
+// as trusted server-side HTML produced by the feature's own templates.
+type HomeCardSource interface {
+	HomeCardHTML(context.Context) (template.HTML, error)
 }
 
-// NewHandler parses embedded assets and constructs the HTML adapter.
-func NewHandler(app Application, logger *slog.Logger) (*Handler, error) {
+// Handler serves the planning web interface.
+type Handler struct {
+	app         Application
+	logger      *slog.Logger
+	tmpl        *template.Template
+	static      http.Handler
+	cardSources []HomeCardSource
+}
+
+// NewHandler parses embedded assets and constructs the HTML adapter. Optional
+// home-card sources are composed onto the home page in the order given.
+func NewHandler(app Application, logger *slog.Logger, cardSources ...HomeCardSource) (*Handler, error) {
 	funcs := template.FuncMap{
 		"dateOnly": func(value time.Time) string {
 			return value.Format(time.DateOnly)
@@ -67,10 +77,11 @@ func NewHandler(app Application, logger *slog.Logger) (*Handler, error) {
 		return nil, fmt.Errorf("open planning static files: %w", err)
 	}
 	return &Handler{
-		app:    app,
-		logger: logger,
-		tmpl:   tmpl,
-		static: http.StripPrefix("/static/", http.FileServer(http.FS(staticRoot))),
+		app:         app,
+		logger:      logger,
+		tmpl:        tmpl,
+		static:      http.StripPrefix("/static/", http.FileServer(http.FS(staticRoot))),
+		cardSources: cardSources,
 	}, nil
 }
 
@@ -86,6 +97,16 @@ func (h *Handler) home(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.fail(w, "load home", err)
 		return
+	}
+	// Compose contributed feature cards. A card that fails to render is logged and
+	// skipped so one feature cannot take down the home page.
+	for _, source := range h.cardSources {
+		card, cardErr := source.HomeCardHTML(r.Context())
+		if cardErr != nil {
+			h.logger.Error("home card failed", "error", cardErr)
+			continue
+		}
+		view.Cards = append(view.Cards, card)
 	}
 	h.renderPlan(w, view)
 }

@@ -1,0 +1,44 @@
+{{define "targets.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutrition targets · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition targets</p>
+    <nav class="header-nav"><a href="/nutrition">Today</a><a href="/nutrition/catalog">Catalog</a></nav>
+  </header>
+  <main>
+    <h1>Targets</h1>
+    <p>The target for a date is the most recent one effective on or before it.</p>
+
+    <section>
+      <h2>Set a target</h2>
+      <form action="/nutrition/targets" method="post">
+        <label>Effective on <input type="date" name="effective_on" value="{{.Today}}" required></label>
+        <label>Calories (kcal) <input type="number" name="calories_kcal" min="0" required></label>
+        <label>Protein (g) <input type="number" name="protein_g" min="0" step="0.1" required></label>
+        <label>Rationale <input name="rationale" placeholder="optional"></label>
+        <button>Save target</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>History</h2>
+      {{if .Targets}}
+      <ul class="target-list">
+        {{range .Targets}}
+        <li>{{.EffectiveOn.Format "2006-01-02"}}: {{.CaloriesKcal}} kcal, {{.ProteinG}} g{{if .Rationale}} — {{.Rationale}}{{end}}</li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="empty">No targets set yet.</p>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>{{end}}

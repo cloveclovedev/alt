@@ -1,0 +1,56 @@
+{{define "area.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutrition · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition · {{.Date}}</p>
+    <nav class="header-nav"><a href="/nutrition/entries/new">Add</a><a href="/nutrition/catalog">Catalog</a><a href="/nutrition/targets">Targets</a></nav>
+  </header>
+  <main>
+    <h1>Today's nutrition</h1>
+    {{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+    {{template "summary" .Summary}}
+
+    <section>
+      <h2>Entries</h2>
+      {{if .Meals}}
+      {{range .Meals}}
+      <h3>{{title (printf "%s" .MealType)}}</h3>
+      <ul class="entry-list">
+        {{range .Entries}}
+        <li>
+          <span>{{.Name}} — {{.CaloriesKcal}} kcal, {{.ProteinG}} g</span>
+          <a href="/nutrition/entries/{{.ID}}/edit">Edit</a>
+          <form action="/nutrition/entries/{{.ID}}/delete" method="post" class="inline"><button>Delete</button></form>
+        </li>
+        {{end}}
+      </ul>
+      {{end}}
+      {{else}}
+      <p class="empty">Nothing logged yet. <a href="/nutrition/entries/new">Add an entry</a>.</p>
+      {{end}}
+    </section>
+
+    {{template "coaching.html" .Coaching}}
+  </main>
+</body>
+</html>{{end}}
+
+{{define "summary"}}<section class="summary">
+  <h2>Totals vs target</h2>
+  {{if .HasTarget}}
+  <p>Calories: {{.Calories.Actual}} / {{.Calories.Target}} kcal ({{.Calories.Percent}}%)</p>
+  <p>Protein: {{.Protein.Actual}} / {{.Protein.Target}} g ({{.Protein.Percent}}%)</p>
+  {{else}}
+  <p>Calories: {{.Calories.Actual}} kcal</p>
+  <p>Protein: {{.Protein.Actual}} g</p>
+  <p class="empty">No target set. <a href="/nutrition/targets">Set a target</a>.</p>
+  {{end}}
+</section>{{end}}

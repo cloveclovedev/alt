@@ -1,0 +1,33 @@
+{{define "card.html"}}<section class="panel nutrition-card" id="nutrition-card">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Nutrition</p>
+      <h2>Today</h2>
+    </div>
+    <a href="/nutrition">Open</a>
+  </div>
+  {{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+  {{template "summary" .Summary}}
+
+  <div class="quick-add">
+    <h3>Quick add</h3>
+    {{if .Catalog}}
+    <form hx-post="/nutrition/card/catalog" action="/nutrition/card/catalog" method="post"
+          hx-target="#nutrition-card" hx-swap="outerHTML" hx-disabled-elt="find button">
+      <label>Item
+        <select name="catalog_id" required>{{range .Catalog}}<option value="{{.ID}}">{{.Name}} — {{.CaloriesKcal}} kcal, {{.ProteinG}} g</option>{{end}}</select>
+      </label>
+      <label>Meal
+        <select name="meal_type">{{range .MealTypes}}<option value="{{.}}">{{title (printf "%s" .)}}</option>{{end}}</select>
+      </label>
+      <button>Add</button>
+      <span class="htmx-indicator">Adding…</span>
+    </form>
+    {{else}}
+    <p class="empty">No catalog items. <a href="/nutrition/catalog">Add some</a> for one-tap logging.</p>
+    {{end}}
+    <p><a href="/nutrition/entries/new">Log with photo or text…</a></p>
+  </div>
+
+  {{template "coaching.html" .Coaching}}
+</section>{{end}}
