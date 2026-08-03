@@ -9,7 +9,7 @@ import (
 
 func newTestService(t *testing.T) *Service {
 	t.Helper()
-	service, err := NewService(nil, "user-1", "Asia/Tokyo")
+	service, err := NewService(nil, "user-1", "Asia/Tokyo", nil, nil)
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}

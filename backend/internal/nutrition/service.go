@@ -26,21 +26,25 @@ const (
 )
 
 // Service owns nutrition business rules: validation, ownership, target
-// derivation, and daily and trailing summaries.
+// derivation, daily and trailing summaries, and AI-assisted logging.
 type Service struct {
 	store    *Store
 	userID   string
 	location *time.Location
 	now      func() time.Time
+	ai       Parser
+	photos   PhotoStore
 }
 
 // NewService constructs the nutrition service for one local user and timezone.
-func NewService(store *Store, userID, timezone string) (*Service, error) {
+// parser and photos are optional (nil when AI or object storage is unconfigured);
+// the AI logging methods return a clear error when their dependency is absent.
+func NewService(store *Store, userID, timezone string, parser Parser, photos PhotoStore) (*Service, error) {
 	location, err := time.LoadLocation(timezone)
 	if err != nil {
 		return nil, fmt.Errorf("load timezone: %w", err)
 	}
-	return &Service{store: store, userID: userID, location: location, now: time.Now}, nil
+	return &Service{store: store, userID: userID, location: location, now: time.Now, ai: parser, photos: photos}, nil
 }
 
 // LocalToday returns the current local calendar date at midnight.

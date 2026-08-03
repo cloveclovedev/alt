@@ -17,7 +17,9 @@ import (
 	"github.com/cloveclovedev/alt/internal/core/database"
 	"github.com/cloveclovedev/alt/internal/core/httpserver"
 	"github.com/cloveclovedev/alt/internal/core/logging"
+	"github.com/cloveclovedev/alt/internal/core/objectstore"
 	"github.com/cloveclovedev/alt/internal/identity"
+	"github.com/cloveclovedev/alt/internal/nutrition"
 	"github.com/cloveclovedev/alt/internal/planning"
 	"github.com/cloveclovedev/alt/internal/platform/openrouter"
 	"github.com/cloveclovedev/alt/internal/routine"
@@ -126,11 +128,36 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	photoStore, err := objectstore.New(objectstore.Config{
+		Endpoint:        cfg.ObjectStoreEndpoint,
+		Region:          cfg.ObjectStoreRegion,
+		Bucket:          cfg.ObjectStoreBucket,
+		AccessKeyID:     cfg.ObjectStoreAccessKeyID,
+		SecretAccessKey: cfg.ObjectStoreSecretAccessKey,
+	})
+	if err != nil {
+		return err
+	}
+	// Pass a true nil interface when object storage is unconfigured; a typed-nil
+	// *Store would read as non-nil and panic when the photo path calls it.
+	var nutritionPhotos nutrition.PhotoStore
+	if photoStore != nil {
+		nutritionPhotos = photoStore
+	}
+	nutritionService, err := nutrition.NewService(nutrition.NewStore(pool), cfg.UserID, cfg.UserTimezone, aiService, nutritionPhotos)
+	if err != nil {
+		return err
+	}
+	nutritionHandler, err := nutrition.NewHandler(nutritionService, logger)
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
 	planningHandler.Register(mux)
 	dailyHandler.Register(mux)
 	settingsHandler.Register(mux)
+	nutritionHandler.Register(mux)
 	aiSettingsHandler.Register(mux)
 	routineHandler.Register(mux)
 	mux.HandleFunc("GET /livez", func(w http.ResponseWriter, _ *http.Request) {

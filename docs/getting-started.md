@@ -23,8 +23,10 @@ docker compose up --build
 Compose:
 
 1. starts PostgreSQL on `127.0.0.1:25432`;
-2. applies the versioned Atlas migrations;
-3. builds and starts the Go web application on `127.0.0.1:28080`.
+2. starts Garage (S3-compatible object storage) on `127.0.0.1:23900`, which
+   creates its dev bucket and access key on first start with no bootstrap step;
+3. applies the versioned Atlas migrations;
+4. builds and starts the Go web application on `127.0.0.1:28080`.
 
 Open <http://127.0.0.1:28080/>.
 

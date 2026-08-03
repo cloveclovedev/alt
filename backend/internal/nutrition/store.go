@@ -59,7 +59,7 @@ func (s *Store) GetCatalogItem(ctx context.Context, userID, id string) (CatalogI
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
 	item, err := scanCatalogItem(row)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || isInvalidUUID(err) {
 		return CatalogItem{}, ErrNotFound
 	}
 	if err != nil {
@@ -155,7 +155,7 @@ func (s *Store) GetEntry(ctx context.Context, userID, id string) (Entry, error) 
 		WHERE id = $1 AND user_id = $2
 	`, id, userID)
 	entry, err := scanEntry(row)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || isInvalidUUID(err) {
 		return Entry{}, ErrNotFound
 	}
 	if err != nil {
@@ -356,4 +356,12 @@ func scanTarget(row scanner) (Target, error) {
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
+// isInvalidUUID reports whether err is PostgreSQL's invalid-text-representation
+// error (22P02), which a malformed id path parameter produces. Such an id cannot
+// identify an existing row, so callers treat it as not found rather than a fault.
+func isInvalidUUID(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
 }

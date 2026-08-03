@@ -160,3 +160,18 @@ type TargetInput struct {
 	ProteinG     float64
 	Rationale    string
 }
+
+// Candidate is a proposed entry produced by AI parsing (photo or text). It is
+// never stored on its own: the user reviews and edits candidates, and only on
+// confirmation are they written as entries. This keeps mutation entirely with the
+// user; the model only proposes.
+type Candidate struct {
+	Name         string
+	CaloriesKcal int
+	ProteinG     float64
+	MealType     MealType
+	Source       EntrySource
+	// CatalogID is set when the candidate name matched a catalog item, whose
+	// stored values are then preferred over the AI estimate.
+	CatalogID *string
+}

@@ -31,6 +31,11 @@ type Config struct {
 	GoogleOAuthClientSecret    string
 	GoogleOAuthRedirectURL     string
 	CalendarTokenEncryptionKey string
+	ObjectStoreEndpoint        string
+	ObjectStoreRegion          string
+	ObjectStoreBucket          string
+	ObjectStoreAccessKeyID     string
+	ObjectStoreSecretAccessKey string
 }
 
 type fileConfig struct {
@@ -104,6 +109,18 @@ func Load(requireDatabase bool) (Config, error) {
 	}
 	cfg.GoogleOAuthClientID = getenv("ALT_GOOGLE_OAUTH_CLIENT_ID", getenv("GOOGLE_OAUTH_CLIENT_ID", ""))
 	cfg.GoogleOAuthRedirectURL = getenv("ALT_GOOGLE_OAUTH_REDIRECT_URL", getenv("GOOGLE_OAUTH_REDIRECT_URL", ""))
+
+	cfg.ObjectStoreEndpoint = getenv("ALT_OBJECT_STORE_ENDPOINT", getenv("OBJECT_STORE_ENDPOINT", ""))
+	cfg.ObjectStoreRegion = getenv("ALT_OBJECT_STORE_REGION", getenv("OBJECT_STORE_REGION", ""))
+	cfg.ObjectStoreBucket = getenv("ALT_OBJECT_STORE_BUCKET", getenv("OBJECT_STORE_BUCKET", ""))
+	cfg.ObjectStoreAccessKeyID, _, err = lookupApplicationSecret("OBJECT_STORE_ACCESS_KEY_ID")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.ObjectStoreSecretAccessKey, _, err = lookupApplicationSecret("OBJECT_STORE_SECRET_ACCESS_KEY")
+	if err != nil {
+		return Config{}, err
+	}
 
 	if cfg.Port < 1 || cfg.Port > 65535 {
 		return Config{}, fmt.Errorf("PORT must be between 1 and 65535")
