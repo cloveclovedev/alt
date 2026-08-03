@@ -8,7 +8,7 @@ import (
 )
 
 const dailyPlanningPurpose = "daily_planning"
-const dailyPlanningPromptVersion = "daily-planning-v3"
+const dailyPlanningPromptVersion = "daily-planning-v4"
 
 // DailyContextGatherer owns deterministic external I/O for planning evidence.
 type DailyContextGatherer interface {
