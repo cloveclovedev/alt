@@ -42,28 +42,7 @@
       <input type="hidden" name="session_id" value="{{.ID}}">
       <button type="submit">Continue without failed sources</button>
     </form>
-  {{else if eq .Status "reviewing"}}
-    {{with .Preview}}
-      <div class="saved-plan">
-        <h3>Summary</h3>
-        {{markdown .SummaryMarkdown}}
-        <h3>Full plan</h3>
-        {{markdown .ContentMarkdown}}
-        {{if .NotesMarkdown}}<h3>Notes</h3>{{markdown .NotesMarkdown}}{{end}}
-      </div>
-    {{end}}
-    {{with $.PreviewComponents}}{{template "plan-components" .}}{{end}}
-    <div class="inline-form">
-      <form action="/planning/daily/{{dateOnly $.Date}}/chat" method="post">
-        <input type="hidden" name="session_id" value="{{.ID}}">
-        <button type="submit" class="secondary">Back to chat</button>
-      </form>
-      <form action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
-        <input type="hidden" name="session_id" value="{{.ID}}">
-        <button type="submit">Confirm plan</button>
-      </form>
-    </div>
-  {{else if eq .Status "chatting"}}
+  {{else}}
     {{if .Messages}}
       <div class="chat">
         {{range .Messages}}
@@ -74,18 +53,34 @@
         {{end}}
       </div>
     {{else}}
-      <p class="empty">Send a message to begin planning with the loaded context.</p>
+      <p class="empty">Send a message to start planning. The assistant replies and drafts a plan below that you refine and then confirm.</p>
     {{end}}
+
+    {{with .Preview}}
+      <div class="plan-draft">
+        <p class="eyebrow">Plan draft</p>
+        <div class="saved-plan">
+          <h3>Summary</h3>
+          {{markdown .SummaryMarkdown}}
+          <h3>Full plan</h3>
+          {{markdown .ContentMarkdown}}
+          {{if .NotesMarkdown}}<h3>Notes</h3>{{markdown .NotesMarkdown}}{{end}}
+        </div>
+        {{with $.PreviewComponents}}{{template "plan-components" .}}{{end}}
+      </div>
+    {{end}}
+
     <form action="/planning/daily/{{dateOnly $.Date}}/messages" method="post">
       <input type="hidden" name="session_id" value="{{.ID}}">
       <label for="content">Message</label>
       <textarea id="content" name="content" required></textarea>
       <button type="submit">Send</button>
     </form>
-    {{if .Messages}}
-      <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/review" method="post">
+
+    {{if .Preview}}
+      <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
         <input type="hidden" name="session_id" value="{{.ID}}">
-        <button type="submit" class="secondary">Review plan</button>
+        <button type="submit">Confirm plan</button>
       </form>
     {{end}}
   {{end}}

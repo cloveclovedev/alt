@@ -8,7 +8,7 @@ import (
 )
 
 const dailyPlanningPurpose = "daily_planning"
-const dailyPlanningPromptVersion = "daily-planning-v2"
+const dailyPlanningPromptVersion = "daily-planning-v3"
 
 // DailyContextGatherer owns deterministic external I/O for planning evidence.
 type DailyContextGatherer interface {
@@ -16,8 +16,9 @@ type DailyContextGatherer interface {
 }
 
 // DailyAI is the provider-neutral model boundary used by a planning session.
+// Every turn returns one structured proposal: a natural-language reply plus the
+// current draft of the plan.
 type DailyAI interface {
-	Chat(context.Context, string, DailyPlanningContext, []DailyPlanningMessage) (AIGeneration, error)
 	Propose(context.Context, string, DailyPlanningContext, []DailyPlanningMessage) (AIGeneration, DailyPlanProposal, error)
 }
 
@@ -176,7 +177,8 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 	if err != nil {
 		return DailyPlanningView{}, err
 	}
-	if session.Status != DailySessionChatting || len(session.Messages) == 0 || session.Messages[len(session.Messages)-1].Role != MessageRoleUser {
+	if (session.Status != DailySessionChatting && session.Status != DailySessionReviewing) ||
+		len(session.Messages) == 0 || session.Messages[len(session.Messages)-1].Role != MessageRoleUser {
 		return DailyPlanningView{}, ErrInvalidSessionState
 	}
 	modelID, err := s.store.LoadModelAssignment(ctx, s.userID, dailyPlanningPurpose)
@@ -186,7 +188,7 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 	if s.ai == nil {
 		return DailyPlanningView{}, fmt.Errorf("daily planning AI is not configured")
 	}
-	generation, err := s.ai.Chat(ctx, modelID, session.Context, session.Messages)
+	generation, proposal, err := s.ai.Propose(ctx, modelID, session.Context, session.Messages)
 	if err != nil {
 		_ = s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, "", dailyPlanningPromptVersion, "failed", 0, 0)
 		return DailyPlanningView{}, fmt.Errorf("request daily planning model: %w", err)
@@ -197,12 +199,16 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 	if err := s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, generation.ID, dailyPlanningPromptVersion, "succeeded", generation.PromptTokens, generation.CompletionTokens); err != nil {
 		return DailyPlanningView{}, err
 	}
-	// The AI adapter returns response content in the final saved message to avoid retaining it in metadata.
-	response := strings.TrimSpace(generation.Response)
-	if response == "" {
-		return DailyPlanningView{}, fmt.Errorf("request daily planning model: empty response")
+	// The assistant's conversational reply is the saved chat message; the rest of
+	// the proposal becomes the current unconfirmed preview.
+	message := strings.TrimSpace(proposal.AssistantMessage)
+	if message == "" {
+		message = "(No reply text was returned. See the plan draft below.)"
 	}
-	if err := s.store.AppendDailyMessage(ctx, s.userID, sessionID, MessageRoleAssistant, response); err != nil {
+	if err := s.store.AppendDailyMessage(ctx, s.userID, sessionID, MessageRoleAssistant, message); err != nil {
+		return DailyPlanningView{}, err
+	}
+	if err := s.store.SaveDailyPreview(ctx, s.userID, sessionID, modelID, dailyPlanningPromptVersion, sanitizeProposal(proposal, session.Context)); err != nil {
 		return DailyPlanningView{}, err
 	}
 	updated, err := s.store.LoadDailySession(ctx, s.userID, sessionID)
@@ -210,61 +216,6 @@ func (s *DailyService) completeAssistantTurn(ctx context.Context, date time.Time
 		return DailyPlanningView{}, err
 	}
 	return s.dailyView(ctx, date, &updated)
-}
-
-// Review asks the configured model for strict structured output, then validates it locally.
-func (s *DailyService) Review(ctx context.Context, rawDate, sessionID string) (DailyPlanningView, error) {
-	date, err := s.parseDailyDate(rawDate)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	session, err := s.store.LoadDailySession(ctx, s.userID, sessionID)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	if session.Status != DailySessionChatting {
-		return DailyPlanningView{}, ErrInvalidSessionState
-	}
-	modelID, err := s.store.LoadModelAssignment(ctx, s.userID, dailyPlanningPurpose)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	generation, proposal, err := s.ai.Propose(ctx, modelID, session.Context, session.Messages)
-	if err != nil {
-		_ = s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, "", dailyPlanningPromptVersion, "failed", 0, 0)
-		return DailyPlanningView{}, fmt.Errorf("generate daily planning preview: %w", err)
-	}
-	if err := validateProposal(proposal, session.Context); err != nil {
-		_ = s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, generation.ID, dailyPlanningPromptVersion, "invalid", generation.PromptTokens, generation.CompletionTokens)
-		return DailyPlanningView{}, err
-	}
-	if err := s.store.RecordGeneration(ctx, session.ID, dailyPlanningPurpose, modelID, generation.ID, dailyPlanningPromptVersion, "succeeded", generation.PromptTokens, generation.CompletionTokens); err != nil {
-		return DailyPlanningView{}, err
-	}
-	if err := s.store.SaveDailyPreview(ctx, s.userID, sessionID, modelID, dailyPlanningPromptVersion, proposal); err != nil {
-		return DailyPlanningView{}, err
-	}
-	updated, err := s.store.LoadDailySession(ctx, s.userID, sessionID)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	return s.dailyView(ctx, date, &updated)
-}
-
-// BackToChat discards the current unconfirmed preview.
-func (s *DailyService) BackToChat(ctx context.Context, rawDate, sessionID string) (DailyPlanningView, error) {
-	date, err := s.parseDailyDate(rawDate)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	if err := s.store.BackToDailyChat(ctx, s.userID, sessionID); err != nil {
-		return DailyPlanningView{}, err
-	}
-	session, err := s.store.LoadDailySession(ctx, s.userID, sessionID)
-	if err != nil {
-		return DailyPlanningView{}, err
-	}
-	return s.dailyView(ctx, date, &session)
 }
 
 // Confirm creates one immutable revision after revalidating its preview.
@@ -296,7 +247,7 @@ func (s *DailyService) dailyView(ctx context.Context, date time.Time, session *D
 		return DailyPlanningView{}, err
 	}
 	view.Plan = planView.Plan
-	if session != nil && session.Status == DailySessionReviewing && session.Preview != nil {
+	if session != nil && session.Preview != nil {
 		components := previewComponents(*session.Preview, session.Context, s.location)
 		view.PreviewComponents = &components
 	}
@@ -329,6 +280,102 @@ func validateMessage(value string) (string, error) {
 		return "", fmt.Errorf("%w: message is too long", ErrInvalidInput)
 	}
 	return value, nil
+}
+
+// sanitizeProposal drops selections that are not present in the session context,
+// de-duplicates them, and removes empty or false entries, so an in-progress draft
+// can be previewed and later confirmed without a stray hallucinated reference
+// blocking confirmation. It does not enforce the length and required-prose rules;
+// those remain strict checks applied only at confirmation.
+func sanitizeProposal(proposal DailyPlanProposal, value DailyPlanningContext) DailyPlanProposal {
+	knownIssues := make(map[string]struct{}, len(value.GitHub))
+	for _, issue := range value.GitHub {
+		knownIssues[githubIssueKey(issue.RepositoryOwner, issue.RepositoryName, issue.Number)] = struct{}{}
+	}
+	issues := make([]PlannedGitHubIssue, 0, len(proposal.GitHubIssues))
+	seenIssue := make(map[string]struct{})
+	for _, sel := range proposal.GitHubIssues {
+		owner, name := strings.TrimSpace(sel.RepositoryOwner), strings.TrimSpace(sel.RepositoryName)
+		key := githubIssueKey(owner, name, sel.Number)
+		if _, ok := knownIssues[key]; !ok {
+			continue
+		}
+		if _, dup := seenIssue[key]; dup {
+			continue
+		}
+		seenIssue[key] = struct{}{}
+		issues = append(issues, PlannedGitHubIssue{RepositoryOwner: owner, RepositoryName: name, Number: sel.Number})
+	}
+	proposal.GitHubIssues = issues
+
+	knownRoutines := make(map[string]struct{}, len(value.Routines))
+	for _, candidate := range value.Routines {
+		knownRoutines[candidate.RoutineID] = struct{}{}
+	}
+	routineIDs := make([]string, 0, len(proposal.RoutineIDs))
+	seenRoutine := make(map[string]struct{})
+	for _, id := range proposal.RoutineIDs {
+		id = strings.TrimSpace(id)
+		if _, ok := knownRoutines[id]; !ok {
+			continue
+		}
+		if _, dup := seenRoutine[id]; dup {
+			continue
+		}
+		seenRoutine[id] = struct{}{}
+		routineIDs = append(routineIDs, id)
+	}
+	proposal.RoutineIDs = routineIDs
+
+	knownEvents := make(map[string]struct{}, len(value.Calendar))
+	for _, event := range value.Calendar {
+		knownEvents[calendarEventKey(event.CalendarSourceID, event.ExternalEventID)] = struct{}{}
+	}
+	events := make([]PlannedCalendarEvent, 0, len(proposal.CalendarEvents))
+	seenEvent := make(map[string]struct{})
+	for _, sel := range proposal.CalendarEvents {
+		source, external := strings.TrimSpace(sel.CalendarSourceID), strings.TrimSpace(sel.ExternalEventID)
+		key := calendarEventKey(source, external)
+		if _, ok := knownEvents[key]; !ok {
+			continue
+		}
+		if _, dup := seenEvent[key]; dup {
+			continue
+		}
+		seenEvent[key] = struct{}{}
+		events = append(events, PlannedCalendarEvent{CalendarSourceID: source, ExternalEventID: external})
+	}
+	proposal.CalendarEvents = events
+
+	actions := make([]ActionItem, 0, len(proposal.ActionItems))
+	for _, item := range proposal.ActionItems {
+		if strings.TrimSpace(item.Title) == "" {
+			continue
+		}
+		actions = append(actions, item)
+	}
+	proposal.ActionItems = actions
+
+	unavailable := make([]string, 0, len(proposal.Unavailable))
+	for _, source := range proposal.Unavailable {
+		switch strings.TrimSpace(source) {
+		case "calendar":
+			if value.CalendarStatus == SourceStatusUnavailable {
+				unavailable = append(unavailable, "calendar")
+			}
+		case "github":
+			if value.GitHubStatus == SourceStatusUnavailable {
+				unavailable = append(unavailable, "github")
+			}
+		case "routines":
+			if value.RoutineStatus == SourceStatusUnavailable {
+				unavailable = append(unavailable, "routines")
+			}
+		}
+	}
+	proposal.Unavailable = unavailable
+
+	return proposal
 }
 
 func validateProposal(proposal DailyPlanProposal, value DailyPlanningContext) error {

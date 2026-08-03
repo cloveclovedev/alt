@@ -125,16 +125,18 @@ type ActionItem struct {
 	Note  string `json:"note"`
 }
 
-// DailyPlanProposal is strict structured model output and confirmation input.
+// DailyPlanProposal is the structured model output for every turn: a
+// natural-language reply plus the current draft of the plan.
 type DailyPlanProposal struct {
-	SummaryMarkdown string                 `json:"summary_markdown"`
-	ContentMarkdown string                 `json:"content_markdown"`
-	NotesMarkdown   string                 `json:"notes_markdown"`
-	GitHubIssues    []PlannedGitHubIssue   `json:"github_issues"`
-	RoutineIDs      []string               `json:"routine_ids"`
-	CalendarEvents  []PlannedCalendarEvent `json:"calendar_events"`
-	ActionItems     []ActionItem           `json:"action_items"`
-	Unavailable     []string               `json:"unavailable_sources"`
+	AssistantMessage string                 `json:"assistant_message"`
+	SummaryMarkdown  string                 `json:"summary_markdown"`
+	ContentMarkdown  string                 `json:"content_markdown"`
+	NotesMarkdown    string                 `json:"notes_markdown"`
+	GitHubIssues     []PlannedGitHubIssue   `json:"github_issues"`
+	RoutineIDs       []string               `json:"routine_ids"`
+	CalendarEvents   []PlannedCalendarEvent `json:"calendar_events"`
+	ActionItems      []ActionItem           `json:"action_items"`
+	Unavailable      []string               `json:"unavailable_sources"`
 }
 
 // DailyPlanningSession is the transport-neutral session view.

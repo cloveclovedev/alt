@@ -30,12 +30,6 @@ func (f *fakeDailyApplication) SendMessage(context.Context, string, string, stri
 func (f *fakeDailyApplication) RetryLastMessage(context.Context, string, string) (DailyPlanningView, error) {
 	return f.view, nil
 }
-func (f *fakeDailyApplication) Review(context.Context, string, string) (DailyPlanningView, error) {
-	return f.view, nil
-}
-func (f *fakeDailyApplication) BackToChat(context.Context, string, string) (DailyPlanningView, error) {
-	return f.view, nil
-}
 func (f *fakeDailyApplication) Confirm(context.Context, string, string) (DailyPlanningView, error) {
 	return f.view, nil
 }
@@ -63,13 +57,17 @@ func getDaily(t *testing.T, handler http.Handler) string {
 	return response.Body.String()
 }
 
-func TestDailyReviewRendersStructuredSelections(t *testing.T) {
+func TestDailyRendersConversationAndPlanDraftTogether(t *testing.T) {
 	view := DailyPlanningView{
 		Date:     time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC),
 		Timezone: "UTC",
 		Session: &DailyPlanningSession{
 			ID:     "session-1",
 			Status: DailySessionReviewing,
+			Messages: []DailyPlanningMessage{
+				{Role: MessageRoleUser, Content: "特記事項は特になし"},
+				{Role: MessageRoleAssistant, Content: "Focusing on issue **#61** today. Anything to add?"},
+			},
 			Preview: &DailyPlanProposal{
 				SummaryMarkdown: "Ship the UI.",
 				ContentMarkdown: "Focus on **rendering** first.",
@@ -87,15 +85,19 @@ func TestDailyReviewRendersStructuredSelections(t *testing.T) {
 	body := getDaily(t, dailyTestHandler(t, view))
 
 	for _, want := range []string{
-		"<strong>rendering</strong>",                            // prose rendered as Markdown
+		"Plan draft",                                            // the live draft heading
+		"Focusing on issue <strong>#61",                         // assistant conversational reply rendered
+		"特記事項は特になし",                                             // user message shown in the same view
+		"<strong>rendering</strong>",                            // draft prose rendered as Markdown
 		`href="https://github.com/cloveclovedev/alt/issues/61"`, // issue link
 		"cloveclovedev/alt#61",
 		"Draft release notes",
 		"10:00",
 		"Standup",
+		"/planning/daily/2026-07-27/confirm", // confirm available while chatting
 	} {
 		if !strings.Contains(body, want) {
-			t.Fatalf("review body missing %q", want)
+			t.Fatalf("body missing %q", want)
 		}
 	}
 }
