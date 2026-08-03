@@ -87,6 +87,43 @@ func TestCompleteRoutineUsesCompletionForm(t *testing.T) {
 	}
 }
 
+func TestCompleteRoutineWithoutDateLeavesCompletedOnZero(t *testing.T) {
+	app := &fakeApplication{}
+	handler := testHandler(t, app)
+	values := url.Values{"note": {"Quick complete"}}
+	request := httptest.NewRequest(http.MethodPost, "/routines/routine-1/complete", strings.NewReader(values.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusSeeOther || !app.completed.CompletedOn.IsZero() || app.completed.Note != "Quick complete" {
+		t.Fatalf("response = %d, completed = %#v", response.Code, app.completed)
+	}
+}
+
+func TestCompleteRoutineOverHTMXReturnsFragmentInsteadOfRedirect(t *testing.T) {
+	app := &fakeApplication{detail: DetailView{Routine: Routine{Name: "Walk the dog", CategoryName: "Health"}}}
+	handler := testHandler(t, app)
+	values := url.Values{"note": {"Around the block"}}
+	request := httptest.NewRequest(http.MethodPost, "/routines/routine-1/complete", strings.NewReader(values.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("HX-Request", "true")
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d", response.Code)
+	}
+	body := response.Body.String()
+	for _, want := range []string{"Walk the dog", "Health", "Around the block", `id="routine-routine-1"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body = %q, missing %q", body, want)
+		}
+	}
+}
+
 func TestListRendersStatusSections(t *testing.T) {
 	app := &fakeApplication{listView: ListView{Today: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC), DueSections: []DueSection{{State: DueStateOverdue, Categories: []CategorySection{{Category: Category{Name: "Health"}, Routines: []RoutineSummary{{Routine: Routine{ID: "routine-1", Name: "Walk"}}}}}}, {State: DueStateToday}, {State: DueStateUpcoming}}}}
 	handler := testHandler(t, app)

@@ -150,15 +150,37 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) complete(w http.ResponseWriter, r *http.Request) {
+	routineID := r.PathValue("routine_id")
 	input, err := h.parseCompletionInput(r)
 	if err == nil {
-		err = h.app.Complete(r.Context(), r.PathValue("routine_id"), input)
+		err = h.app.Complete(r.Context(), routineID, input)
 	}
 	if err != nil {
 		h.writeApplicationError(w, err)
 		return
 	}
-	http.Redirect(w, r, "/routines/"+r.PathValue("routine_id"), http.StatusSeeOther)
+	if r.Header.Get("HX-Request") == "true" {
+		h.renderCompleteFragment(w, r, routineID, input.Note)
+		return
+	}
+	http.Redirect(w, r, "/routines/"+routineID, http.StatusSeeOther)
+}
+
+// renderCompleteFragment swaps in the small "done" state after an HTMX
+// completion request, so an embedding page (the planning home card) can
+// complete a routine without a full-page navigation.
+func (h *Handler) renderCompleteFragment(w http.ResponseWriter, r *http.Request, routineID, note string) {
+	detail, err := h.app.Detail(r.Context(), routineID)
+	if err != nil {
+		h.writeApplicationError(w, err)
+		return
+	}
+	h.render(w, "routine-complete-fragment", CompleteFragmentView{
+		RoutineID:    routineID,
+		Name:         detail.Routine.Name,
+		CategoryName: detail.Routine.CategoryName,
+		Note:         note,
+	})
 }
 
 func (h *Handler) updateEvent(w http.ResponseWriter, r *http.Request) {
@@ -257,11 +279,18 @@ func (h *Handler) parseRoutineInput(r *http.Request, creating bool) (RoutineInpu
 	return input, nil
 }
 
+// parseCompletionInput leaves CompletedOn zero when the field is absent, so a
+// quick completion (no date input, e.g. the planning home card) defaults to
+// today in the service layer. A non-empty value must still parse.
 func (h *Handler) parseCompletionInput(r *http.Request) (CompletionInput, error) {
 	if err := r.ParseForm(); err != nil {
 		return CompletionInput{}, fmt.Errorf("%w: invalid form", ErrInvalidInput)
 	}
-	date, err := parseDate(r.FormValue("completed_on"))
+	raw := strings.TrimSpace(r.FormValue("completed_on"))
+	if raw == "" {
+		return CompletionInput{Note: r.FormValue("note")}, nil
+	}
+	date, err := parseDate(raw)
 	if err != nil {
 		return CompletionInput{}, fmt.Errorf("%w: completion date is required", ErrInvalidInput)
 	}

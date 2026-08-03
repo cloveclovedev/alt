@@ -146,8 +146,13 @@ func (s *Service) Delete(ctx context.Context, routineID string) error {
 	return s.store.DeleteRoutine(ctx, s.userID, strings.TrimSpace(routineID))
 }
 
-// Complete records an actual completion using a local calendar date.
+// Complete records an actual completion using a local calendar date. A zero
+// CompletedOn defaults to today, so a quick one-click completion (the
+// planning home card) need not submit a date.
 func (s *Service) Complete(ctx context.Context, routineID string, input CompletionInput) error {
+	if input.CompletedOn.IsZero() {
+		input.CompletedOn = s.localToday()
+	}
 	if err := s.validateEventDate(input.CompletedOn); err != nil {
 		return err
 	}

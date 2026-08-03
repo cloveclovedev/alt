@@ -351,6 +351,17 @@ structured lists beside the prose:
 Snapshotted titles are preferred so history stays readable after an issue is
 renamed or deleted.
 
+On the home card, GitHub issues and action items render the same way: plain,
+non-interactive list items. Routines are the one component type with a
+completion model (`routine_events`), so the home card renders each selected
+routine as either a one-click completion action (an optional note plus a
+"Complete" button, defaulting to today's date) or, once completed for the
+local day, a done state with no further action. GitHub issue completion means
+the issue is closed on GitHub, which this application does not mutate; action
+items have no completion model. Both stay display-only until a future design
+gives them one — checking them would imply a persisted state the application
+does not track.
+
 ### Prompt shaping
 
 One prompt shapes every turn. It asks the model to return a single object whose
@@ -705,3 +716,16 @@ the sections above always describe the current intended design.
   the plan date, in start order, and the model no longer selects calendar events
   (that field left the proposal schema). Tracked in
   [#61](https://github.com/cloveclovedev/alt/issues/61).
+- 2026-08-03 — Resolved the home card checkbox open question per component
+  rather than uniformly: routines persist through the existing
+  `routine_events` completion model (a one-click "Complete" action with an
+  optional note, defaulting to today), while GitHub issues and action items
+  stay display-only plain list items, since neither has a completion model
+  the application owns. The routine completion action reuses
+  `POST /routines/{routine_id}/complete`, which returns a small HTMX fragment
+  instead of redirecting when called with `HX-Request`. Alternatives
+  considered: checkboxes for all three component types with no persistence
+  (rejected as misleading UI implying a state nothing tracks) and a new
+  persisted completion table for action items (rejected as task-management
+  scope creep, out of this design's non-goals). Tracked in
+  [#64](https://github.com/cloveclovedev/alt/issues/64).

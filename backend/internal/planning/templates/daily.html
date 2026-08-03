@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Daily planning · alt</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -19,6 +20,7 @@
 {{end}}
 
 {{define "daily-content"}}
+<div id="daily-content">
 <section class="hero compact-hero">
   <div>
     <p class="eyebrow">Daily planning</p>
@@ -31,16 +33,22 @@
 <section class="panel plan-panel" id="daily-planning">
   <div class="section-heading"><h2>Planning session</h2><span class="revision">{{statusLabel .Status}}</span></div>
   <p class="source-status">Calendar: {{.Context.CalendarStatus}} · GitHub: {{.Context.GitHubStatus}} · Routines: {{.Context.RoutineStatus}}</p>
-  <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/context" method="post">
+  <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/context" method="post"
+        hx-post="/planning/daily/{{dateOnly $.Date}}/context" hx-target="#daily-content" hx-swap="outerHTML"
+        hx-disabled-elt="find button">
     <input type="hidden" name="session_id" value="{{.ID}}">
     <button type="submit" class="secondary">Refresh context</button>
+    <span class="htmx-indicator">Refreshing…</span>
   </form>
 
   {{if eq .Status "context_blocked"}}
     <p class="empty">One or more sources failed. Retry or explicitly continue without them.</p>
-    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/continue" method="post">
+    <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/continue" method="post"
+          hx-post="/planning/daily/{{dateOnly $.Date}}/continue" hx-target="#daily-content" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
       <input type="hidden" name="session_id" value="{{.ID}}">
       <button type="submit">Continue without failed sources</button>
+      <span class="htmx-indicator">Continuing…</span>
     </form>
   {{else}}
     {{if .Messages}}
@@ -69,17 +77,25 @@
       </div>
     {{end}}
 
-    <form action="/planning/daily/{{dateOnly $.Date}}/messages" method="post">
+    <form action="/planning/daily/{{dateOnly $.Date}}/messages" method="post"
+          hx-post="/planning/daily/{{dateOnly $.Date}}/messages" hx-target="#daily-content" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
       <input type="hidden" name="session_id" value="{{.ID}}">
       <label for="content">Message</label>
       <textarea id="content" name="content" required></textarea>
-      <button type="submit">Send</button>
+      <div class="action-row">
+        <button type="submit">Send</button>
+        <span class="htmx-indicator">Sending…</span>
+      </div>
     </form>
 
     {{if .Preview}}
-      <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post">
+      <form class="inline-form" action="/planning/daily/{{dateOnly $.Date}}/confirm" method="post"
+            hx-post="/planning/daily/{{dateOnly $.Date}}/confirm" hx-target="#daily-content" hx-swap="outerHTML"
+            hx-disabled-elt="find button">
         <input type="hidden" name="session_id" value="{{.ID}}">
         <button type="submit">Confirm plan</button>
+        <span class="htmx-indicator">Confirming…</span>
       </form>
     {{end}}
   {{end}}
@@ -92,4 +108,5 @@
   {{template "plan-body" .}}
 </section>
 {{end}}
+</div>
 {{end}}

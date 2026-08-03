@@ -544,6 +544,88 @@ button.secondary:hover {
   background: #dfece5;
 }
 
+/* HTMX loading state: an inline indicator beside a triggering button,
+   hidden until htmx marks the request in flight. */
+.htmx-indicator {
+  display: none;
+  margin-left: 0.6rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Home card checklist: GitHub issues and action items stay plain list
+   items; routines get an interactive completion row. */
+.checklist {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.checklist-routines {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist-routine {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #ebe8df;
+}
+
+.checklist-routine-name {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 700;
+}
+
+.checklist-routine.done .checklist-routine-name {
+  color: var(--muted);
+}
+
+.checklist-routine .complete-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checklist-routine .complete-form input {
+  flex: 1 1 12rem;
+  min-height: 2.2rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.checklist-routine .complete-form button {
+  min-height: 2.2rem;
+  margin-top: 0;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.done-badge {
+  color: var(--accent-dark);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 @media (max-width: 700px) {
   main {
     padding: 2.5rem 0;
