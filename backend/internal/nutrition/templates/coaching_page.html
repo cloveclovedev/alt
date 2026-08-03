@@ -1,0 +1,21 @@
+{{define "coaching_page.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutrition coaching · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition coaching · {{.Date}}</p>
+  </header>
+  <main>
+    <h1>Nutrition coaching</h1>
+    <p>Read-only commentary generated from the day's recorded entries and target.</p>
+    {{template "coaching.html" .}}
+  </main>
+</body>
+</html>{{end}}

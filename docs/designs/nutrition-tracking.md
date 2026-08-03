@@ -370,3 +370,16 @@ sections above always describe the current intended design.
   not-found (400/404) rather than a 502. The engineering-policy default S3 test
   container was switched from MinIO to Garage (MinIO's server is unmaintained).
   Tracked in [#74](https://github.com/cloveclovedev/alt/issues/74).
+- 2026-08-03 — Implemented on-demand daily coaching (#75). Added a
+  `nutrition_coaching` cache table keyed uniquely per `(user_id, coached_date)`
+  and the coaching service in `internal/nutrition` (`coaching.go`) using the
+  `nutrition_coaching` AI purpose. Coaching is generated only from stored data —
+  the model receives a compact context of the day's entries, totals, and
+  applicable target and returns an evaluation plus one suggestion — so it can
+  never fabricate an entry. Generation is on-demand and cached per day;
+  regenerating replaces the row in place (verified). Usage metadata is recorded in
+  `internal/ai`; no prompt or response content is stored beyond the regenerable
+  cache. Exposed `GET/POST /nutrition/coaching` following the HTMX loading-state
+  convention with a plain-form fallback; the nutrition area and home card compose
+  this card in #76. Tracked in
+  [#75](https://github.com/cloveclovedev/alt/issues/75).
