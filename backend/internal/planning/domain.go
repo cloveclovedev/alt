@@ -1,6 +1,9 @@
 package planning
 
-import "time"
+import (
+	"html/template"
+	"time"
+)
 
 // Kind identifies the period represented by a plan.
 type Kind string
@@ -21,6 +24,9 @@ type View struct {
 	// Home marks the today entry card, which offers a start-or-resume action
 	// and a compact summary. Read-only past-plan views leave it false.
 	Home bool
+	// Cards holds feature-contributed home-page fragments, composed only on the
+	// home view. Each is trusted server-side HTML from another feature's templates.
+	Cards []template.HTML
 }
 
 // Plan is the latest immutable revision for a planning period.

@@ -34,6 +34,7 @@
           {{template "home-checklist" .Components}}
         {{end}}
       </section>
+      {{range .Cards}}{{.}}{{end}}
     {{else}}
       <section class="hero">
         <div>

@@ -383,3 +383,16 @@ sections above always describe the current intended design.
   convention with a plain-form fallback; the nutrition area and home card compose
   this card in #76. Tracked in
   [#75](https://github.com/cloveclovedev/alt/issues/75).
+- 2026-08-03 — Implemented the nutrition web area and the home-card fragment
+  (#76). Added `/nutrition` (today's entries grouped by meal, deterministic totals
+  vs target with achievement percentages, and the coaching card), entry
+  corrections (`/nutrition/entries/{id}/edit`, update, delete), catalog management
+  (`/nutrition/catalog`), and targets (`/nutrition/targets`). The home page
+  composes nutrition's card through a new `planning.HomeCardSource` port that
+  nutrition's handler satisfies (`HomeCardHTML`) and `cmd/alt/main.go` wires:
+  planning renders each contributed fragment on the home view and never imports
+  nutrition. The card shows totals vs target, a one-tap catalog quick-add that
+  updates the card in place over HTMX, a link to the photo/text logging form, and
+  the day's coaching with a generate/refresh action. A card that fails to render
+  is logged and skipped so one feature cannot take down the home page. Tracked in
+  [#76](https://github.com/cloveclovedev/alt/issues/76).

@@ -81,10 +81,6 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	planningHandler, err := planning.NewHandler(service, logger)
-	if err != nil {
-		return err
-	}
 	routineService, err := routine.NewService(routine.NewStore(pool), cfg.UserID, cfg.UserTimezone)
 	if err != nil {
 		return err
@@ -149,6 +145,12 @@ func runWeb(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	nutritionHandler, err := nutrition.NewHandler(nutritionService, logger)
+	if err != nil {
+		return err
+	}
+	// The home page composes nutrition's card via the HomeCardSource port; planning
+	// never imports nutrition.
+	planningHandler, err := planning.NewHandler(service, logger, nutritionHandler)
 	if err != nil {
 		return err
 	}

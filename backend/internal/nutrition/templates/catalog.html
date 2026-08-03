@@ -1,0 +1,53 @@
+{{define "catalog.html"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutrition catalog · alt</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="alt home">alt</a>
+    <p>Nutrition catalog</p>
+    <nav class="header-nav"><a href="/nutrition">Today</a><a href="/nutrition/targets">Targets</a></nav>
+  </header>
+  <main>
+    <h1>Catalog</h1>
+    {{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+
+    <section>
+      <h2>Add item</h2>
+      <form action="/nutrition/catalog" method="post">
+        <label>Name <input name="name" required></label>
+        <label>Calories (kcal) <input type="number" name="calories_kcal" min="0" required></label>
+        <label>Protein (g) <input type="number" name="protein_g" min="0" step="0.1" required></label>
+        <label>Kind <select name="kind">{{range .Kinds}}<option value="{{.}}">{{title (printf "%s" .)}}</option>{{end}}</select></label>
+        <button>Add item</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Items</h2>
+      {{if .Catalog}}
+      <ul class="catalog-list">
+        {{range .Catalog}}
+        <li>
+          <form action="/nutrition/catalog/{{.ID}}" method="post" class="inline-edit">
+            <input name="name" value="{{.Name}}" required>
+            <input type="number" name="calories_kcal" value="{{.CaloriesKcal}}" min="0" required>
+            <input type="number" name="protein_g" value="{{.ProteinG}}" min="0" step="0.1" required>
+            <select name="kind"><option value="food" {{if eq .Kind "food"}}selected{{end}}>Food</option><option value="supplement" {{if eq .Kind "supplement"}}selected{{end}}>Supplement</option></select>
+            <button>Save</button>
+          </form>
+          <form action="/nutrition/catalog/{{.ID}}/delete" method="post" class="inline"><button>Delete</button></form>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="empty">No catalog items yet.</p>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>{{end}}
