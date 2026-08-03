@@ -145,6 +145,36 @@ func TestStoreNutritionFlow(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("regeneration must replace in place, not append: %d rows", count)
 	}
+
+	// Planning facts: compact context for the logged date. Today has entries (420
+	// kcal) and a target (1750 kcal on Aug 1); yesterday has none.
+	service, err := NewService(store, userID, "Asia/Tokyo", nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts, err := service.PlanningFacts(ctx, loggedDate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if facts == nil {
+		t.Fatal("planning facts should be available when entries and a target exist")
+	}
+	if facts.TodayCaloriesKcal != 420 || facts.TargetCaloriesKcal != 1750 {
+		t.Fatalf("planning facts today/target wrong: %+v", facts)
+	}
+	if facts.TrailingDays != 7 {
+		t.Fatalf("trailing window should be 7 days, got %d", facts.TrailingDays)
+	}
+
+	// A user with no targets and no entries has no facts to report.
+	emptyUser := integrationUser(t, ctx, pool, "Empty nutrition user")
+	emptyService, err := NewService(store, emptyUser, "Asia/Tokyo", nil, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if facts, err := emptyService.PlanningFacts(ctx, loggedDate); err != nil || facts != nil {
+		t.Fatalf("expected no facts for an empty user, got %+v, %v", facts, err)
+	}
 }
 
 func assertTarget(t *testing.T, store *Store, ctx context.Context, userID, day string, wantCalories int) {

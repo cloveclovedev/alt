@@ -33,6 +33,11 @@ type routineContextEnvelope struct {
 	Error    string             `json:"error,omitempty"`
 }
 
+type nutritionContextEnvelope struct {
+	Facts *NutritionFacts `json:"facts,omitempty"`
+	Error string          `json:"error,omitempty"`
+}
+
 // FindOrCreateDailySession resumes an active session or creates its gathering shell.
 func (s *Store) FindOrCreateDailySession(ctx context.Context, userID string, date time.Time) (DailyPlanningSession, bool, error) {
 	dateText := date.Format(time.DateOnly)
@@ -123,16 +128,16 @@ func (s *Store) LoadDailySession(ctx context.Context, userID, sessionID string) 
 }
 
 func (s *Store) loadDailyContext(ctx context.Context, session *DailyPlanningSession) error {
-	var calendarJSON, githubJSON, routineJSON []byte
-	var calendarStatus, githubStatus, routineStatus string
+	var calendarJSON, githubJSON, routineJSON, nutritionJSON []byte
+	var calendarStatus, githubStatus, routineStatus, nutritionStatus string
 	err := s.pool.QueryRow(ctx, `
-		SELECT calendar_context, github_context, routine_context,
-		       calendar_status, github_status, routine_status, gathered_at
+		SELECT calendar_context, github_context, routine_context, nutrition_context,
+		       calendar_status, github_status, routine_status, nutrition_status, gathered_at
 		FROM daily_planning_contexts
 		WHERE session_id = $1
 	`, session.ID).Scan(
-		&calendarJSON, &githubJSON, &routineJSON,
-		&calendarStatus, &githubStatus, &routineStatus, &session.Context.GatheredAt,
+		&calendarJSON, &githubJSON, &routineJSON, &nutritionJSON,
+		&calendarStatus, &githubStatus, &routineStatus, &nutritionStatus, &session.Context.GatheredAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
@@ -143,6 +148,7 @@ func (s *Store) loadDailyContext(ctx context.Context, session *DailyPlanningSess
 	var calendar calendarContextEnvelope
 	var github githubContextEnvelope
 	var routines routineContextEnvelope
+	var nutritionEnvelope nutritionContextEnvelope
 	if err := json.Unmarshal(calendarJSON, &calendar); err != nil {
 		return fmt.Errorf("decode Calendar planning context: %w", err)
 	}
@@ -152,15 +158,21 @@ func (s *Store) loadDailyContext(ctx context.Context, session *DailyPlanningSess
 	if err := json.Unmarshal(routineJSON, &routines); err != nil {
 		return fmt.Errorf("decode routine planning context: %w", err)
 	}
+	if err := json.Unmarshal(nutritionJSON, &nutritionEnvelope); err != nil {
+		return fmt.Errorf("decode nutrition planning context: %w", err)
+	}
 	session.Context.Calendar = calendar.Events
 	session.Context.GitHub = github.Issues
 	session.Context.Routines = routines.Routines
+	session.Context.Nutrition = nutritionEnvelope.Facts
 	session.Context.CalendarStatus = SourceStatus(calendarStatus)
 	session.Context.GitHubStatus = SourceStatus(githubStatus)
 	session.Context.RoutineStatus = SourceStatus(routineStatus)
+	session.Context.NutritionStatus = SourceStatus(nutritionStatus)
 	session.Context.CalendarError = calendar.Error
 	session.Context.GitHubError = github.Error
 	session.Context.RoutineError = routines.Error
+	session.Context.NutritionError = nutritionEnvelope.Error
 	return nil
 }
 
@@ -202,6 +214,10 @@ func (s *Store) ReplaceDailyContext(ctx context.Context, userID, sessionID strin
 	if err != nil {
 		return fmt.Errorf("encode routine planning context: %w", err)
 	}
+	nutritionJSON, err := json.Marshal(nutritionContextEnvelope{Facts: value.Nutrition, Error: value.NutritionError})
+	if err != nil {
+		return fmt.Errorf("encode nutrition planning context: %w", err)
+	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("begin context transaction: %w", err)
@@ -212,19 +228,21 @@ func (s *Store) ReplaceDailyContext(ctx context.Context, userID, sessionID strin
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO daily_planning_contexts (
-			session_id, calendar_context, github_context, routine_context,
-			calendar_status, github_status, routine_status, gathered_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			session_id, calendar_context, github_context, routine_context, nutrition_context,
+			calendar_status, github_status, routine_status, nutrition_status, gathered_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (session_id) DO UPDATE SET
 			calendar_context = EXCLUDED.calendar_context,
 			github_context = EXCLUDED.github_context,
 			routine_context = EXCLUDED.routine_context,
+			nutrition_context = EXCLUDED.nutrition_context,
 			calendar_status = EXCLUDED.calendar_status,
 			github_status = EXCLUDED.github_status,
 			routine_status = EXCLUDED.routine_status,
+			nutrition_status = EXCLUDED.nutrition_status,
 			gathered_at = EXCLUDED.gathered_at
-	`, sessionID, calendarJSON, githubJSON, routineJSON,
-		value.CalendarStatus, value.GitHubStatus, value.RoutineStatus, value.GatheredAt); err != nil {
+	`, sessionID, calendarJSON, githubJSON, routineJSON, nutritionJSON,
+		value.CalendarStatus, value.GitHubStatus, value.RoutineStatus, value.NutritionStatus, value.GatheredAt); err != nil {
 		return fmt.Errorf("save daily planning context: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `

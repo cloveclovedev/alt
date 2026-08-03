@@ -95,18 +95,41 @@ type RoutineCandidate struct {
 	Notes           string     `json:"notes,omitempty"`
 }
 
+// NutritionFacts is compact, provider-neutral nutrition context for daily
+// planning: yesterday's totals versus its target, today's intake so far, and a
+// trailing-window average. It never contains individual entries, so the model
+// cannot reconstruct or fabricate a log from it. Its fields mirror the nutrition
+// feature's own planning-facts type so the composition root maps between them
+// without either feature importing the other.
+type NutritionFacts struct {
+	YesterdayCaloriesKcal       int     `json:"yesterday_calories_kcal"`
+	YesterdayProteinG           float64 `json:"yesterday_protein_g"`
+	YesterdayTargetCaloriesKcal int     `json:"yesterday_target_calories_kcal,omitempty"`
+	YesterdayTargetProteinG     float64 `json:"yesterday_target_protein_g,omitempty"`
+	TodayCaloriesKcal           int     `json:"today_calories_kcal"`
+	TodayProteinG               float64 `json:"today_protein_g"`
+	TrailingDays                int     `json:"trailing_days"`
+	TrailingAvgCaloriesKcal     int     `json:"trailing_avg_calories_kcal"`
+	TrailingAvgProteinG         float64 `json:"trailing_avg_protein_g"`
+	TargetCaloriesKcal          int     `json:"target_calories_kcal,omitempty"`
+	TargetProteinG              float64 `json:"target_protein_g,omitempty"`
+}
+
 // DailyPlanningContext is saved working evidence, never a raw provider response.
 type DailyPlanningContext struct {
-	Calendar       []CalendarEvent    `json:"calendar"`
-	GitHub         []GitHubIssue      `json:"github"`
-	Routines       []RoutineCandidate `json:"routines"`
-	CalendarStatus SourceStatus       `json:"calendar_status"`
-	GitHubStatus   SourceStatus       `json:"github_status"`
-	RoutineStatus  SourceStatus       `json:"routine_status"`
-	CalendarError  string             `json:"calendar_error,omitempty"`
-	GitHubError    string             `json:"github_error,omitempty"`
-	RoutineError   string             `json:"routine_error,omitempty"`
-	GatheredAt     time.Time          `json:"gathered_at"`
+	Calendar        []CalendarEvent    `json:"calendar"`
+	GitHub          []GitHubIssue      `json:"github"`
+	Routines        []RoutineCandidate `json:"routines"`
+	Nutrition       *NutritionFacts    `json:"nutrition,omitempty"`
+	CalendarStatus  SourceStatus       `json:"calendar_status"`
+	GitHubStatus    SourceStatus       `json:"github_status"`
+	RoutineStatus   SourceStatus       `json:"routine_status"`
+	NutritionStatus SourceStatus       `json:"nutrition_status"`
+	CalendarError   string             `json:"calendar_error,omitempty"`
+	GitHubError     string             `json:"github_error,omitempty"`
+	RoutineError    string             `json:"routine_error,omitempty"`
+	NutritionError  string             `json:"nutrition_error,omitempty"`
+	GatheredAt      time.Time          `json:"gathered_at"`
 }
 
 // PlannedGitHubIssue identifies a validated issue selected by the proposal.

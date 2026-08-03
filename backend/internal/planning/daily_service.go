@@ -11,7 +11,7 @@ import (
 	"github.com/cloveclovedev/alt/internal/ai"
 )
 
-const dailyPlanningPromptVersion = "daily-planning-v4"
+const dailyPlanningPromptVersion = "daily-planning-v5"
 
 // DailyContextGatherer owns deterministic external I/O for planning evidence.
 type DailyContextGatherer interface {
