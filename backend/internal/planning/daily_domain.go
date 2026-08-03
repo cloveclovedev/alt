@@ -1,6 +1,9 @@
 package planning
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // DailySessionStatus identifies the lifecycle phase of a daily planning session.
 type DailySessionStatus string
@@ -125,16 +128,18 @@ type ActionItem struct {
 	Note  string `json:"note"`
 }
 
-// DailyPlanProposal is strict structured model output and confirmation input.
+// DailyPlanProposal is the structured model output for every turn: a
+// natural-language reply plus the current draft of the plan.
 type DailyPlanProposal struct {
-	SummaryMarkdown string                 `json:"summary_markdown"`
-	ContentMarkdown string                 `json:"content_markdown"`
-	NotesMarkdown   string                 `json:"notes_markdown"`
-	GitHubIssues    []PlannedGitHubIssue   `json:"github_issues"`
-	RoutineIDs      []string               `json:"routine_ids"`
-	CalendarEvents  []PlannedCalendarEvent `json:"calendar_events"`
-	ActionItems     []ActionItem           `json:"action_items"`
-	Unavailable     []string               `json:"unavailable_sources"`
+	AssistantMessage string                 `json:"assistant_message"`
+	SummaryMarkdown  string                 `json:"summary_markdown"`
+	ContentMarkdown  string                 `json:"content_markdown"`
+	NotesMarkdown    string                 `json:"notes_markdown"`
+	GitHubIssues     []PlannedGitHubIssue   `json:"github_issues"`
+	RoutineIDs       []string               `json:"routine_ids"`
+	CalendarEvents   []PlannedCalendarEvent `json:"calendar_events"`
+	ActionItems      []ActionItem           `json:"action_items"`
+	Unavailable      []string               `json:"unavailable_sources"`
 }
 
 // DailyPlanningSession is the transport-neutral session view.
@@ -153,10 +158,202 @@ type DailyPlanningSession struct {
 	FinalizedAt             *time.Time
 }
 
+// LatestMessage returns the most recent turn, or nil when the conversation is
+// empty. It is shown expanded while earlier turns collapse, keeping the page
+// short as the conversation grows.
+func (s *DailyPlanningSession) LatestMessage() *DailyPlanningMessage {
+	if len(s.Messages) == 0 {
+		return nil
+	}
+	return &s.Messages[len(s.Messages)-1]
+}
+
+// EarlierMessages returns every turn before the latest, for the collapsed history.
+func (s *DailyPlanningSession) EarlierMessages() []DailyPlanningMessage {
+	if len(s.Messages) <= 1 {
+		return nil
+	}
+	return s.Messages[:len(s.Messages)-1]
+}
+
 // DailyPlanningView is the complete web view for one local date.
 type DailyPlanningView struct {
 	Date     time.Time
 	Timezone string
 	Session  *DailyPlanningSession
 	Plan     *Plan
+	// PreviewComponents holds the reviewing session's proposal joined against
+	// its context so titles and links can render. It is nil unless the session
+	// is reviewing an unconfirmed preview.
+	PreviewComponents *PlanComponents
+}
+
+// PlanComponents holds the structured selections of one revision for display.
+// Prose lives in Markdown; these are rendered as their own lists beside it.
+type PlanComponents struct {
+	GitHubIssues   []PlanGitHubIssue
+	Routines       []PlanRoutine
+	ActionItems    []ActionItem
+	CalendarEvents []PlanCalendarEvent
+}
+
+// Empty reports whether no structured selection exists.
+func (c PlanComponents) Empty() bool {
+	return len(c.GitHubIssues) == 0 && len(c.Routines) == 0 &&
+		len(c.ActionItems) == 0 && len(c.CalendarEvents) == 0
+}
+
+// PlanGitHubIssue is a selected issue with its display snapshot.
+type PlanGitHubIssue struct {
+	RepositoryOwner string
+	RepositoryName  string
+	Number          int
+	Title           string
+	HTMLURL         string
+}
+
+// Repository is the "owner/name" label for a selected issue.
+func (i PlanGitHubIssue) Repository() string {
+	return i.RepositoryOwner + "/" + i.RepositoryName
+}
+
+// PlanRoutine is a selected routine's display snapshot.
+type PlanRoutine struct {
+	Name         string
+	CategoryName string
+}
+
+// PlanCalendarEvent is a selected calendar event reduced to a minimal reference.
+type PlanCalendarEvent struct {
+	TimeLabel string
+	Title     string
+	Role      CalendarRole
+	HTMLURL   string
+}
+
+// previewComponents joins a proposal's selections against session context so the
+// draft can display titles, links, and times. Calendar events are not a model
+// choice: the plan date's events from context are shown as the day's constraints.
+func previewComponents(proposal DailyPlanProposal, value DailyPlanningContext, planDate time.Time, location *time.Location) PlanComponents {
+	components := PlanComponents{ActionItems: proposal.ActionItems}
+
+	issuesByKey := make(map[string]GitHubIssue, len(value.GitHub))
+	for _, issue := range value.GitHub {
+		issuesByKey[githubIssueKey(issue.RepositoryOwner, issue.RepositoryName, issue.Number)] = issue
+	}
+	for _, selected := range proposal.GitHubIssues {
+		if issue, ok := issuesByKey[githubIssueKey(selected.RepositoryOwner, selected.RepositoryName, selected.Number)]; ok {
+			components.GitHubIssues = append(components.GitHubIssues, PlanGitHubIssue{
+				RepositoryOwner: issue.RepositoryOwner,
+				RepositoryName:  issue.RepositoryName,
+				Number:          issue.Number,
+				Title:           issue.Title,
+				HTMLURL:         issue.HTMLURL,
+			})
+		}
+	}
+
+	routinesByID := make(map[string]RoutineCandidate, len(value.Routines))
+	for _, routine := range value.Routines {
+		routinesByID[routine.RoutineID] = routine
+	}
+	for _, id := range proposal.RoutineIDs {
+		if routine, ok := routinesByID[id]; ok {
+			components.Routines = append(components.Routines, PlanRoutine{Name: routine.Name, CategoryName: routine.CategoryName})
+		}
+	}
+
+	for _, event := range todaysCalendarEvents(value.Calendar, planDate, location) {
+		components.CalendarEvents = append(components.CalendarEvents, PlanCalendarEvent{
+			TimeLabel: calendarTimeLabel(event.AllDay, event.StartsAt, event.EndsAt, location),
+			Title:     event.Title,
+			Role:      event.Role,
+			HTMLURL:   event.HTMLURL,
+		})
+	}
+	return components
+}
+
+// todaysCalendarEvents returns the context events that occur on the plan date,
+// in start order. Calendar events are the day's constraints, shown in full and
+// deterministically rather than selected by the model.
+func todaysCalendarEvents(events []CalendarEvent, planDate time.Time, location *time.Location) []CalendarEvent {
+	day := time.Date(planDate.Year(), planDate.Month(), planDate.Day(), 0, 0, 0, 0, location)
+	var out []CalendarEvent
+	for _, event := range events {
+		start, end, ok := eventDayRange(event, location)
+		if !ok {
+			continue
+		}
+		if !day.Before(start) && day.Before(end) {
+			out = append(out, event)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return calendarStart(out[i]).Before(calendarStart(out[j])) })
+	return out
+}
+
+// eventDayRange returns the [start, end) day range an event covers, where end is
+// exclusive. All-day end dates are already exclusive; timed events extend to the
+// day after their end.
+func eventDayRange(event CalendarEvent, location *time.Location) (start, end time.Time, ok bool) {
+	dayOf := func(t time.Time) time.Time {
+		t = t.In(location)
+		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, location)
+	}
+	if event.AllDay {
+		if event.StartDate == nil {
+			return time.Time{}, time.Time{}, false
+		}
+		start = dayOf(*event.StartDate)
+		if event.EndDate != nil {
+			end = dayOf(*event.EndDate)
+		}
+		if !end.After(start) {
+			end = start.AddDate(0, 0, 1)
+		}
+		return start, end, true
+	}
+	if event.StartsAt == nil {
+		return time.Time{}, time.Time{}, false
+	}
+	start = dayOf(*event.StartsAt)
+	if event.EndsAt != nil {
+		end = dayOf(*event.EndsAt).AddDate(0, 0, 1)
+	}
+	if !end.After(start) {
+		end = start.AddDate(0, 0, 1)
+	}
+	return start, end, true
+}
+
+func calendarStart(event CalendarEvent) time.Time {
+	if event.StartsAt != nil {
+		return *event.StartsAt
+	}
+	if event.StartDate != nil {
+		return *event.StartDate
+	}
+	return time.Time{}
+}
+
+// plannedCalendarEvents projects context events to the confirmation input shape.
+func plannedCalendarEvents(events []CalendarEvent) []PlannedCalendarEvent {
+	planned := make([]PlannedCalendarEvent, 0, len(events))
+	for _, event := range events {
+		planned = append(planned, PlannedCalendarEvent{CalendarSourceID: event.CalendarSourceID, ExternalEventID: event.ExternalEventID})
+	}
+	return planned
+}
+
+// calendarTimeLabel formats an event as a compact time reference in the local zone.
+func calendarTimeLabel(allDay bool, startsAt, endsAt *time.Time, location *time.Location) string {
+	if allDay || startsAt == nil {
+		return "All day"
+	}
+	label := startsAt.In(location).Format("15:04")
+	if endsAt != nil {
+		label += "–" + endsAt.In(location).Format("15:04")
+	}
+	return label
 }

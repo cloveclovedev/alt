@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/cloveclovedev/alt/internal/core/markdown"
 )
 
-//go:embed templates/daily.html
+//go:embed templates/daily.html templates/components.html
 var dailyTemplatesFS embed.FS
 
 // DailyApplication is the web-facing daily planning service boundary.
@@ -22,8 +24,6 @@ type DailyApplication interface {
 	ContinueWithoutFailedSources(context.Context, string, string) (DailyPlanningView, error)
 	SendMessage(context.Context, string, string, string) (DailyPlanningView, error)
 	RetryLastMessage(context.Context, string, string) (DailyPlanningView, error)
-	Review(context.Context, string, string) (DailyPlanningView, error)
-	BackToChat(context.Context, string, string) (DailyPlanningView, error)
 	Confirm(context.Context, string, string) (DailyPlanningView, error)
 }
 
@@ -38,7 +38,8 @@ func NewDailyHandler(app DailyApplication, logger *slog.Logger) (*DailyHandler, 
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"dateOnly":    func(value time.Time) string { return value.Format(time.DateOnly) },
 		"statusLabel": func(status DailySessionStatus) string { return strings.ReplaceAll(string(status), "_", " ") },
-	}).ParseFS(dailyTemplatesFS, "templates/daily.html")
+		"markdown":    markdown.ToHTML,
+	}).ParseFS(dailyTemplatesFS, "templates/daily.html", "templates/components.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse daily planning template: %w", err)
 	}
@@ -51,8 +52,6 @@ func (h *DailyHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /planning/daily/{date}/continue", h.continueWithout)
 	mux.HandleFunc("POST /planning/daily/{date}/messages", h.send)
 	mux.HandleFunc("POST /planning/daily/{date}/retry", h.retry)
-	mux.HandleFunc("POST /planning/daily/{date}/review", h.review)
-	mux.HandleFunc("POST /planning/daily/{date}/chat", h.back)
 	mux.HandleFunc("POST /planning/daily/{date}/confirm", h.confirm)
 }
 
@@ -77,16 +76,6 @@ func (h *DailyHandler) send(w http.ResponseWriter, r *http.Request) {
 func (h *DailyHandler) retry(w http.ResponseWriter, r *http.Request) {
 	h.run(w, r, func() (DailyPlanningView, error) {
 		return h.app.RetryLastMessage(r.Context(), r.PathValue("date"), formValue(r, "session_id"))
-	})
-}
-func (h *DailyHandler) review(w http.ResponseWriter, r *http.Request) {
-	h.run(w, r, func() (DailyPlanningView, error) {
-		return h.app.Review(r.Context(), r.PathValue("date"), formValue(r, "session_id"))
-	})
-}
-func (h *DailyHandler) back(w http.ResponseWriter, r *http.Request) {
-	h.run(w, r, func() (DailyPlanningView, error) {
-		return h.app.BackToChat(r.Context(), r.PathValue("date"), formValue(r, "session_id"))
 	})
 }
 func (h *DailyHandler) confirm(w http.ResponseWriter, r *http.Request) {

@@ -299,22 +299,6 @@ func (s *Store) SaveDailyPreview(ctx context.Context, userID, sessionID, modelID
 	return nil
 }
 
-// BackToDailyChat invalidates a preview and returns its active session to chat.
-func (s *Store) BackToDailyChat(ctx context.Context, userID, sessionID string) error {
-	command, err := s.pool.Exec(ctx, `
-		UPDATE daily_planning_sessions
-		SET status = 'chatting', preview_json = NULL, updated_at = now()
-		WHERE id = $1 AND user_id = $2 AND status = 'reviewing'
-	`, sessionID, userID)
-	if err != nil {
-		return fmt.Errorf("return daily planning session to chat: %w", err)
-	}
-	if command.RowsAffected() != 1 {
-		return ErrInvalidSessionState
-	}
-	return nil
-}
-
 // RecordGeneration stores non-content provider metadata for diagnostics.
 func (s *Store) RecordGeneration(ctx context.Context, sessionID, purpose, modelID, generationID, promptVersion, status string, promptTokens, completionTokens int) error {
 	if _, err := s.pool.Exec(ctx, `

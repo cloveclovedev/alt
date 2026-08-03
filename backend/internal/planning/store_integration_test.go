@@ -48,23 +48,40 @@ func TestStorePlanningFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	date := time.Date(2026, 7, 27, 9, 0, 0, 0, location)
+	dateText := date.Format(time.DateOnly)
 
-	if err := store.Save(ctx, userID, KindDaily, date, SavePlanInput{
-		SummaryMarkdown: "First summary",
-		ContentMarkdown: "# First plan",
-	}); err != nil {
+	var planID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO plans (user_id, kind, period_start)
+		VALUES ($1, 'daily', $2)
+		RETURNING id::text
+	`, userID, dateText).Scan(&planID); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(ctx, userID, KindDaily, date, SavePlanInput{
-		SummaryMarkdown: "Second summary",
-		ContentMarkdown: "# Second plan",
-	}); err != nil {
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plan_revisions (plan_id, revision, summary_markdown, content_markdown)
+		VALUES ($1, 1, 'First summary', '# First plan')
+	`, planID); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(ctx, userID, KindWeekly, date, SavePlanInput{
-		SummaryMarkdown: "Weekly summary",
-		ContentMarkdown: "# Weekly plan",
-	}); err != nil {
+	var revisionID string
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO plan_revisions (plan_id, revision, summary_markdown, content_markdown, notes_markdown)
+		VALUES ($1, 2, 'Second summary', '# Second plan', 'Second notes')
+		RETURNING id::text
+	`, planID).Scan(&revisionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plan_revision_github_issues (plan_revision_id, repository_owner, repository_name, issue_number, title, html_url, position)
+		VALUES ($1, 'cloveclovedev', 'alt', 61, 'Restructure daily planning UI', 'https://github.com/cloveclovedev/alt/issues/61', 0)
+	`, revisionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO plan_revision_action_items (plan_revision_id, title, note, position)
+		VALUES ($1, 'Draft the release notes', 'Cover the UI changes', 0)
+	`, revisionID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,18 +92,18 @@ func TestStorePlanningFlow(t *testing.T) {
 	if view.Plan == nil ||
 		view.Plan.Revision != 2 ||
 		view.Plan.SummaryMarkdown != "Second summary" ||
-		view.Plan.ContentMarkdown != "# Second plan" {
+		view.Plan.ContentMarkdown != "# Second plan" ||
+		view.Plan.NotesMarkdown != "Second notes" {
 		t.Fatalf("plan = %#v", view.Plan)
 	}
 
-	weeklyView, err := store.Load(ctx, userID, KindWeekly, date, location)
-	if err != nil {
-		t.Fatal(err)
+	components := view.Plan.Components
+	if len(components.GitHubIssues) != 1 ||
+		components.GitHubIssues[0].Number != 61 ||
+		components.GitHubIssues[0].Repository() != "cloveclovedev/alt" {
+		t.Fatalf("github issues = %#v", components.GitHubIssues)
 	}
-	if weeklyView.Plan == nil ||
-		weeklyView.Plan.Revision != 1 ||
-		weeklyView.Plan.SummaryMarkdown != "Weekly summary" ||
-		weeklyView.Plan.ContentMarkdown != "# Weekly plan" {
-		t.Fatalf("weekly plan = %#v", weeklyView.Plan)
+	if len(components.ActionItems) != 1 || components.ActionItems[0].Title != "Draft the release notes" {
+		t.Fatalf("action items = %#v", components.ActionItems)
 	}
 }

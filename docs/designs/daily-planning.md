@@ -276,17 +276,23 @@ AI planning does not begin until the user chooses retry successfully or
 explicitly continues. The eventual preview records which sources were
 unavailable so confirmation is informed.
 
-## Chat and confirmation flow
+## Planning turns and confirmation
 
-The chat uses normal HTMX requests rather than streaming:
+Each turn is a single, non-streaming structured request; there is no separate
+review step. On every turn the model returns one object containing both a
+conversational reply and its current draft of the plan.
 
 1. The browser posts a user message.
 2. The user message is saved.
-3. An `hx-indicator` displays "Working..."
-4. The service sends the current message history and normalized context to
-   OpenRouter.
-5. The complete assistant response is saved.
-6. The handler returns the updated chat fragment.
+3. The service sends the message history and normalized context to OpenRouter,
+   requesting one structured object.
+4. The model returns `assistant_message` plus its current draft: summary,
+   content, and notes Markdown, and the selected GitHub issues, routines, action
+   items, and calendar events.
+5. `assistant_message` is saved as the assistant chat turn; the remaining fields
+   become the session's current unconfirmed preview.
+6. The handler returns the updated page: the conversation and the live plan
+   draft beside it, with a Confirm action.
 
 If the model request fails, the saved user message remains visible with a retry
 action. Retrying is idempotent for that turn and does not duplicate messages.
@@ -294,14 +300,17 @@ action. Retrying is idempotent for that turn and does not duplicate messages.
 The model does not call Calendar, GitHub, or routine tools. Go owns all external
 I/O and passes provider-neutral context to AI.
 
-When discussion is ready:
+Draft selections are sanitized on every turn: references absent from the session
+context are dropped and duplicates removed, so an in-progress draft never blocks
+on a stray hallucinated reference. The strict validation — required prose, length
+and count limits, and every reference present in context — runs only at
+confirmation.
 
-1. The user selects "Review plan."
-2. The same configured model returns a strict structured proposal.
-3. The application validates every selected external reference against the
-   session context and renders a preview.
-4. The user selects "Back to chat" or "Confirm plan."
-5. Confirmation creates the next immutable revision and all component rows in
+When the draft is ready:
+
+1. The user selects "Confirm plan."
+2. The application re-validates the current preview strictly.
+3. Confirmation creates the next immutable revision and all component rows in
    one transaction.
 
 Revising an already confirmed day starts a new session seeded with the latest
@@ -334,8 +343,8 @@ and trade-offs behind them. Selected work does not appear as duplicated Markdown
 lists. GitHub issues, routines, and action items render as their own linked,
 structured lists beside the prose:
 
-- during review, the preview joins the proposal's selections against saved
-  session context to display titles and links;
+- during a session, the live preview joins the current draft's selections
+  against saved session context to display titles and links;
 - for a confirmed revision, the structured component rows are loaded back for
   display through a dedicated store read.
 
@@ -344,10 +353,12 @@ renamed or deleted.
 
 ### Prompt shaping
 
-The daily-planning prompt version is advanced when this presentation contract
-changes so confirmed revisions remain reproducible. The prompt instructs the
-model to keep selected work in the structured fields, to avoid duplicating those
-selections in Markdown, and to never narrate the calendar timeline in prose.
+One prompt shapes every turn. It asks the model to return a single object whose
+`assistant_message` carries the natural-language reply and whose remaining fields
+carry the current plan draft. It instructs the model to keep selected work in the
+structured fields, to avoid duplicating those selections in Markdown, and to never
+narrate the calendar timeline in prose. The daily-planning prompt version is
+advanced when this contract changes so confirmed revisions remain reproducible.
 
 ## Google Calendar integration
 
@@ -570,9 +581,9 @@ Initial routes are:
 
 ```text
 /                                      today entry card: status, start/resume, recent confirmed summary
-/planning/daily/{date}                 active chat or final plan
+/planning/daily/{date}                 conversation with the live plan draft, or the final plan
 /planning/daily/{date}/context         gather or refresh context
-/planning/daily/{date}/review          generate and show preview
+/planning/daily/{date}/messages        post a message; returns the reply and updated draft
 /planning/daily/{date}/confirm         confirm immutable revision
 /plans/daily/{date}                    read-only view of a past confirmed plan
 /settings/calendar                     Google connection and source rules
@@ -675,4 +686,22 @@ the sections above always describe the current intended design.
   navigation), dropping calendar events from confirmed plans entirely (rejected
   to keep constraints and history), and keeping the manual form as an advanced
   fallback (rejected to avoid two authoring paths). Tracked in
+  [#61](https://github.com/cloveclovedev/alt/issues/61).
+- 2026-08-03 — Unified the chat and proposal into a single structured turn.
+  Every turn returns one object with a natural-language `assistant_message` plus
+  the current plan draft (review-equivalent form and structured lists from the
+  first turn), so the conversation and a live preview share one screen and the
+  separate "Review plan"/"Back to chat" step is removed. Draft selections are
+  sanitized (invalid references dropped) each turn; strict validation runs only
+  at confirmation. Chosen over the earlier two-format flow (conversational chat,
+  then a separate structured proposal) after that flow leaked proposal JSON into
+  the chat and split the plan across two hard-to-review shapes. Trade-off: one
+  structured-output call per turn. Tracked in
+  [#61](https://github.com/cloveclovedev/alt/issues/61).
+- 2026-08-03 — Made calendar events deterministic rather than a model
+  selection. The model narrowed its calendar picks over turns, so the day's
+  schedule appeared incomplete. Calendar events are the plan date's constraints:
+  the draft and the confirmed revision now show and store every context event on
+  the plan date, in start order, and the model no longer selects calendar events
+  (that field left the proposal schema). Tracked in
   [#61](https://github.com/cloveclovedev/alt/issues/61).

@@ -1,0 +1,68 @@
+{{/* Shared plan rendering fragments used by both the plan page and the daily
+     planning page. Prose renders as sanitized Markdown; the structured
+     selections render as their own lists beside it. */}}
+
+{{define "chat-message"}}
+  <div class="message message-{{.Role}}">
+    <span class="role">{{.Role}}</span>
+    {{if eq .Role "assistant"}}<div class="message-body">{{markdown .Content}}</div>{{else}}<p class="message-body">{{.Content}}</p>{{end}}
+  </div>
+{{end}}
+
+{{define "plan-body"}}
+  <div class="saved-plan">
+    <h3>Summary</h3>
+    {{markdown .SummaryMarkdown}}
+    <h3>Full plan</h3>
+    {{markdown .ContentMarkdown}}
+    {{if .NotesMarkdown}}
+      <h3>Notes</h3>
+      {{markdown .NotesMarkdown}}
+    {{end}}
+  </div>
+  {{template "plan-components" .Components}}
+{{end}}
+
+{{define "plan-components"}}
+  {{if not .Empty}}
+    <div class="components">
+      {{if .GitHubIssues}}
+        <div class="component-group">
+          <h4>GitHub issues</h4>
+          <ul class="component-list">
+            {{range .GitHubIssues}}
+              <li>
+                <a href="{{.HTMLURL}}" rel="noopener noreferrer" target="_blank">{{.Repository}}#{{.Number}}</a>
+                <span>{{.Title}}</span>
+              </li>
+            {{end}}
+          </ul>
+        </div>
+      {{end}}
+      {{if .Routines}}
+        <div class="component-group">
+          <h4>Routines</h4>
+          <ul class="component-list">
+            {{range .Routines}}<li><span>{{.Name}}</span><span class="meta">{{.CategoryName}}</span></li>{{end}}
+          </ul>
+        </div>
+      {{end}}
+      {{if .ActionItems}}
+        <div class="component-group">
+          <h4>Action items</h4>
+          <ul class="component-list">
+            {{range .ActionItems}}<li><span>{{.Title}}</span>{{if .Note}}<span class="meta">{{.Note}}</span>{{end}}</li>{{end}}
+          </ul>
+        </div>
+      {{end}}
+      {{if .CalendarEvents}}
+        <div class="component-group">
+          <h4>Calendar</h4>
+          <ul class="calendar-list">
+            {{range .CalendarEvents}}<li><span class="when">{{.TimeLabel}}</span> · {{if .HTMLURL}}<a href="{{.HTMLURL}}" rel="noopener noreferrer" target="_blank">{{.Title}}</a>{{else}}<span>{{.Title}}</span>{{end}}</li>{{end}}
+          </ul>
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+{{end}}
