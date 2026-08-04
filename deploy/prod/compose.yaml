@@ -1,0 +1,98 @@
+# alt production stack, deployment-target agnostic.
+#
+# The web container is reached only through the shared external `edge` network
+# (the reverse proxy resolves it as `alt-web`); it publishes no host port.
+# PostgreSQL is internal-only. All secrets are injected at deploy time, e.g.:
+#
+#     bws run -- docker compose -f deploy/prod/compose.yaml up -d --build
+#
+# Deployment-location specifics (which host, the proxy, DNS, TLS) live in the
+# operator's private infra repo. See docs/designs/go-web-app.md and .env.example.
+name: alt
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-alt}
+      POSTGRES_USER: ${POSTGRES_USER:-alt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-alt} -d ${POSTGRES_DB:-alt}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [alt]
+
+  migrate:
+    image: arigaio/atlas:1.2.0
+    command:
+      - migrate
+      - apply
+      - --dir
+      - file:///migrations
+      - --url
+      # Injected verbatim (password already percent-encoded); do not compose it
+      # from POSTGRES_PASSWORD, whose reserved characters would corrupt the URI.
+      - ${DATABASE_URL:?DATABASE_URL required}
+    volumes:
+      - ../../db/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [alt]
+
+  web:
+    build: ../../backend
+    image: alt:prod
+    command: ["web"]
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      LOG_LEVEL: info
+      ALT_CONFIG_FILE: /app/config/alt.prod.toml
+      # Injected verbatim (password already percent-encoded); must match the
+      # POSTGRES_* server settings (host `postgres`, port 5432).
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required}
+      ALT_GOOGLE_OAUTH_REDIRECT_URL: https://alt.home.mkuri.dev/settings/calendar/callback
+      # Object storage: Cloudflare R2 (cloveclovedev account). All four values are
+      # required so a broken secret injection fails the deploy instead of silently
+      # disabling object storage.
+      ALT_OBJECT_STORE_ENDPOINT: ${ALT_OBJECT_STORE_ENDPOINT:?ALT_OBJECT_STORE_ENDPOINT required}
+      ALT_OBJECT_STORE_REGION: auto
+      ALT_OBJECT_STORE_BUCKET: ${ALT_OBJECT_STORE_BUCKET:?ALT_OBJECT_STORE_BUCKET required}
+      ALT_OBJECT_STORE_ACCESS_KEY_ID: ${ALT_OBJECT_STORE_ACCESS_KEY_ID:?ALT_OBJECT_STORE_ACCESS_KEY_ID required}
+      ALT_OBJECT_STORE_SECRET_ACCESS_KEY: ${ALT_OBJECT_STORE_SECRET_ACCESS_KEY:?ALT_OBJECT_STORE_SECRET_ACCESS_KEY required}
+      # Secrets injected via `bws run` (see .env.example).
+      ALT_OPENROUTER_API_KEY: ${ALT_OPENROUTER_API_KEY}
+      ALT_GOOGLE_OAUTH_CLIENT_ID: ${ALT_GOOGLE_OAUTH_CLIENT_ID}
+      ALT_GOOGLE_OAUTH_CLIENT_SECRET: ${ALT_GOOGLE_OAUTH_CLIENT_SECRET}
+      ALT_CALENDAR_TOKEN_ENCRYPTION_KEY: ${ALT_CALENDAR_TOKEN_ENCRYPTION_KEY}
+    volumes:
+      - ../../backend/config/alt.prod.toml:/app/config/alt.prod.toml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/app/alt", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      alt: {}
+      edge:
+        aliases: [alt-web]
+
+networks:
+  alt:
+  edge:
+    external: true
+
+volumes:
+  postgres-data:

@@ -1,0 +1,16 @@
+# Non-secret production configuration. Secrets are injected via environment at
+# deploy time (see deploy/prod/.env.example), never placed here.
+[server]
+port = 8080
+shutdown_timeout = "15s"
+
+[database]
+max_connections = 10
+
+[user]
+# Single-user deployment. This UUID is the internal user-table primary key and
+# stays stable across the future authentication rollout (the auth provider's
+# subject maps to this UUID), so data ownership is preserved.
+id = "00000000-0000-0000-0000-000000000001"
+display_name = "Makoto"
+timezone = "Asia/Tokyo"
