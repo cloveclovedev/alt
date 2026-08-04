@@ -226,10 +226,15 @@ References:
 
 ## Deployment direction
 
-The first private deployment uses Docker Compose on a home Linux host and is
-reachable only over Tailscale. A later public deployment can add Caddy on a VPS.
-The same stateless image can move to Cloud Run when managed operation provides a
-concrete benefit.
+The application has two environments: `dev` and `prod`. `prod`'s production stack
+is defined in `deploy/prod/compose.yaml`, deployment-target agnostic: the web
+container is reached only through a shared external reverse-proxy network
+(`edge`) and publishes no host port. The first `prod` deployment runs on a home
+Linux host, reachable only over Tailscale; the shared proxy, DNS, TLS, and the
+private home-network topology are owned by a separate private infrastructure
+repository. The same stack can later be exposed publicly (e.g. on a VPS) once
+request authentication lands, or move to Cloud Run when managed operation
+provides a concrete benefit.
 
 PostgreSQL is never exposed publicly. Off-host backups and restore rehearsals
 are required before the database contains data that matters.
@@ -254,6 +259,15 @@ the sections above always describe the current intended design.
 
 - 2026-07-27 — Initial foundation design: rebuild alt as a single Go web
   application with typed boundaries.
+- 2026-08-04 — Added the `prod` environment and `deploy/prod/compose.yaml`
+  (deployment-target agnostic: web reached only via the shared external `edge`
+  network, no host port; PostgreSQL internal-only; Cloudflare R2 for object
+  storage; secrets injected via `bws run`; a separate `prod` Google OAuth
+  client). First deployed on a home Linux host behind a shared Caddy proxy over
+  Tailscale, whose topology is owned by a separate private infra repo. `prod`
+  stays tailnet-only until request authentication lands. Tracked in
+  [#92](https://github.com/cloveclovedev/alt/issues/92); topology design in the
+  private `home-infra` repo ([#71](https://github.com/cloveclovedev/alt/issues/71)).
 - 2026-08-03 — Established the HTMX and loading-state convention: long or
   LLM-backed actions submit over HTMX and show an in-place, action-specific
   loading label next to the disabled triggering control instead of navigating
