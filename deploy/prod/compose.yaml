@@ -35,7 +35,9 @@ services:
       - --dir
       - file:///migrations
       - --url
-      - postgres://${POSTGRES_USER:-alt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-alt}?sslmode=disable
+      # Injected verbatim (password already percent-encoded); do not compose it
+      # from POSTGRES_PASSWORD, whose reserved characters would corrupt the URI.
+      - ${DATABASE_URL:?DATABASE_URL required}
     volumes:
       - ../../db/migrations:/migrations:ro
     depends_on:
@@ -53,19 +55,23 @@ services:
       APP_ENV: prod
       LOG_LEVEL: info
       ALT_CONFIG_FILE: /app/config/alt.prod.toml
-      DATABASE_URL: postgres://${POSTGRES_USER:-alt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-alt}?sslmode=disable
+      # Injected verbatim (password already percent-encoded); must match the
+      # POSTGRES_* server settings (host `postgres`, port 5432).
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL required}
       ALT_GOOGLE_OAUTH_REDIRECT_URL: https://alt.home.mkuri.dev/settings/calendar/callback
-      # Object storage: Cloudflare R2 (cloveclovedev account).
+      # Object storage: Cloudflare R2 (cloveclovedev account). All four values are
+      # required so a broken secret injection fails the deploy instead of silently
+      # disabling object storage.
       ALT_OBJECT_STORE_ENDPOINT: ${ALT_OBJECT_STORE_ENDPOINT:?ALT_OBJECT_STORE_ENDPOINT required}
       ALT_OBJECT_STORE_REGION: auto
       ALT_OBJECT_STORE_BUCKET: ${ALT_OBJECT_STORE_BUCKET:?ALT_OBJECT_STORE_BUCKET required}
+      ALT_OBJECT_STORE_ACCESS_KEY_ID: ${ALT_OBJECT_STORE_ACCESS_KEY_ID:?ALT_OBJECT_STORE_ACCESS_KEY_ID required}
+      ALT_OBJECT_STORE_SECRET_ACCESS_KEY: ${ALT_OBJECT_STORE_SECRET_ACCESS_KEY:?ALT_OBJECT_STORE_SECRET_ACCESS_KEY required}
       # Secrets injected via `bws run` (see .env.example).
       ALT_OPENROUTER_API_KEY: ${ALT_OPENROUTER_API_KEY}
       ALT_GOOGLE_OAUTH_CLIENT_ID: ${ALT_GOOGLE_OAUTH_CLIENT_ID}
       ALT_GOOGLE_OAUTH_CLIENT_SECRET: ${ALT_GOOGLE_OAUTH_CLIENT_SECRET}
       ALT_CALENDAR_TOKEN_ENCRYPTION_KEY: ${ALT_CALENDAR_TOKEN_ENCRYPTION_KEY}
-      ALT_OBJECT_STORE_ACCESS_KEY_ID: ${ALT_OBJECT_STORE_ACCESS_KEY_ID}
-      ALT_OBJECT_STORE_SECRET_ACCESS_KEY: ${ALT_OBJECT_STORE_SECRET_ACCESS_KEY}
     volumes:
       - ../../backend/config/alt.prod.toml:/app/config/alt.prod.toml:ro
     depends_on:
